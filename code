@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ai เลขาของคุณกาย - Management Pro</title>
+    <title>Ai เลขาของคุณกาย - Management Pro v8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
@@ -14,25 +14,30 @@
         .kpi-card { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .mobile-menu-active { transform: translateX(0) !important; }
+        .task-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .task-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1); }
         .postit-card { transition: all 0.3s; transform: rotate(-1deg); }
         .postit-card:hover { transform: rotate(0deg) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        .mobile-menu-active { transform: translateX(0) !important; }
     </style>
 </head>
 <body class="min-h-screen text-slate-800 flex overflow-hidden">
 
     <script type="module">
-        // Firebase Configuration (Placeholder - will use guest mode if unauthorized)
+        // Firebase Mock Integration
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        // --- GLOBAL HOOKS (Ensuring HTML accessibility) ---
+        window.refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
 
         // Constants
         const CATEGORIES = ['บริหาร', 'ออนไลน์', 'หน่วยรถ', 'โมเดิร์นเทรด', 'งานพัฒนาสินค้า', 'คำสั่งบอส', 'คำสั่งอาจารย์', 'งานออกแบบ', 'อบรม/ประชุม', 'งานประสานงาน', 'งานโปรเจค', 'ส่วนตัว', 'อื่นๆ'];
         const PRIORITIES = {
-            urgent: { label: 'ด่วน', color: 'bg-rose-500', text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
-            urgent_important: { label: 'สำคัญและด่วน', color: 'bg-orange-500', text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
+            urgent: { label: 'งานง่าย ด่วนมาก', color: 'bg-rose-500', text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
             focus: { label: 'งานโฟกัส', color: 'bg-indigo-500', text: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200' },
+            important: { label: 'งานสำคัญ', color: 'bg-orange-500', text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
             general: { label: 'งานทั่วไป', color: 'bg-slate-400', text: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' }
         };
         const STATUSES = {
@@ -43,24 +48,15 @@
         };
 
         // Application State
-        let tasks = JSON.parse(localStorage.getItem('kai_tasks_v5') || '[]');
-        let postIts = JSON.parse(localStorage.getItem('kai_postits_v5') || '[]');
-        let settings = JSON.parse(localStorage.getItem('kai_settings') || '{"notifyTime":"08:30"}');
-        let currentView = 'dashboard';
+        let tasks = JSON.parse(localStorage.getItem('kai_tasks_v8') || '[]');
+        let postIts = JSON.parse(localStorage.getItem('kai_postits_v8') || '[]');
+        let settings = JSON.parse(localStorage.getItem('kai_settings_v8') || '{"notifyTime":"08:30"}');
         let calendarDate = new Date();
         let currentEditId = null;
-
-        // Firebase Initialization with Error Handling for Preview/Domain
         let auth = null;
-        try {
-            const firebaseConfig = { apiKey: "MOCK_KEY", authDomain: "mock.firebaseapp.com" }; // Placeholder
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-        } catch (e) {
-            console.log("Firebase Auth disabled due to environment/config.");
-        }
 
-        // Global Exposed Functions (to be callable from HTML)
+        // --- CORE FUNCTIONS (Attached to window) ---
+
         window.switchView = (view, filterType = null) => {
             document.querySelectorAll('#view-container > div').forEach(el => el.classList.add('hidden'));
             const target = document.getElementById(`view-${view}`);
@@ -70,28 +66,23 @@
             const btn = document.getElementById(`nav-${view}`);
             if(btn) btn.classList.add('bg-indigo-50', 'text-indigo-600', 'font-bold');
 
-            document.getElementById('header-title').innerText = {dashboard:'แดชบอร์ดสรุปงาน', tasks:'รายการงานทั้งหมด', calendar:'ปฏิทินนัดหมาย', postits:'กระดานโน้ตด่วน', settings:'ตั้งค่าระบบ'}[view];
+            const headerTitles = {dashboard:'แดชบอร์ดสรุปงาน', tasks:'รายการงานทั้งหมด', calendar:'ปฏิทินนัดหมาย', postits:'กระดานโน้ตด่วน', settings:'ตั้งค่าระบบ'};
+            document.getElementById('header-title').innerText = headerTitles[view] || 'เลขาคุณกาย';
             
             if(view === 'dashboard') updateDashboard();
-            if(view === 'tasks') renderTasks(filterType);
-            if(view === 'calendar') renderCalendar();
-            if(view === 'postits') renderPostItBoard();
-            if(window.innerWidth < 1024) toggleSidebar(false);
-            refreshIcons();
-        };
-
-        window.toggleSidebar = (state) => {
-            const sb = document.getElementById('sidebar');
-            if(state === undefined) sb.classList.toggle('mobile-menu-active');
-            else if(state) sb.classList.add('mobile-menu-active');
-            else sb.classList.remove('mobile-menu-active');
+            if(view === 'tasks') window.renderTasks(filterType);
+            if(view === 'calendar') window.renderCalendar();
+            if(view === 'postits') window.renderPostItBoard();
+            
+            if(window.innerWidth < 1024) window.toggleSidebar(false);
+            window.refreshIcons();
         };
 
         const updateDashboard = () => {
             const now = new Date();
             const stats = {
                 pending: tasks.filter(t => t.status === 'pending').length,
-                urgent: tasks.filter(t => (t.priority === 'urgent' || t.priority === 'urgent_important') && t.status !== 'closed').length,
+                urgent: tasks.filter(t => (t.priority === 'urgent') && t.status !== 'closed').length,
                 completed: tasks.filter(t => t.status === 'completed' || t.status === 'closed').length,
                 near: tasks.filter(t => {
                     if(!t.deadline || t.status === 'closed') return false;
@@ -107,17 +98,15 @@
 
             const total = tasks.length || 1;
             const successRate = Math.round((stats.completed / total) * 100);
-            const overall = successRate; // Simplified for display
-
             document.getElementById('kpi-success-rate').innerText = successRate + '%';
-            document.getElementById('kpi-total-perc').innerText = overall + '%';
+            document.getElementById('kpi-total-perc').innerText = successRate + '%';
             
             const circle = document.getElementById('kpi-circle');
-            if(circle) circle.style.strokeDashoffset = 502.6 - (502.6 * overall / 100);
+            if(circle) circle.style.strokeDashoffset = 502.6 - (502.6 * successRate / 100);
 
             const aiInsight = document.getElementById('ai-insight');
-            if(stats.urgent > 0) aiInsight.innerText = `คุณกายครับ มีงานด่วนที่ต้องเร่งจัดการ ${stats.urgent} รายการ แนะนำให้เริ่มก่อนครับ`;
-            else aiInsight.innerText = `ยินดีด้วยครับคุณกาย วันนี้ภาพรวมงานค่อนข้างเรียบร้อย KPI อยู่ในระดับที่น่าพอใจครับ`;
+            if(stats.urgent > 0) aiInsight.innerText = `คุณกายครับ มีงานด่วนมากรออยู่ ${stats.urgent} รายการครับ แนะนำให้จัดการทันทีเพื่อ KPI ที่ดีครับ`;
+            else aiInsight.innerText = `สถานะงานโดยรวมดีเยี่ยมครับคุณกาย KPI สำเร็จแล้ว ${successRate}% ครับ`;
         };
 
         window.renderTasks = (specialFilter = null) => {
@@ -134,42 +123,49 @@
                 if(cat !== 'all' && t.category !== cat) m = false;
                 if(date && !t.deadline?.startsWith(date)) m = false;
 
-                if(specialFilter === 'urgent' && !(t.priority === 'urgent' || t.priority === 'urgent_important')) m = false;
+                if(specialFilter === 'urgent' && t.priority !== 'urgent') m = false;
                 if(specialFilter === 'near') {
                     if(t.status === 'closed') return false;
                     const diff = (new Date(t.deadline) - new Date()) / (1000*60*60);
                     if(!(diff > 0 && diff < 24)) m = false;
                 }
+                if(specialFilter === 'pending' && t.status !== 'pending') m = false;
+                if(specialFilter === 'completed' && t.status !== 'completed' && t.status !== 'closed') m = false;
                 return m;
             });
 
             grid.innerHTML = filtered.length ? filtered.map(t => {
                 const p = PRIORITIES[t.priority] || PRIORITIES.general;
                 const s = STATUSES[t.status] || STATUSES.pending;
+                const isLate = t.deadline && new Date() > new Date(t.deadline) && t.status !== 'completed' && t.status !== 'closed';
+                const isDone = t.status === 'completed' || t.status === 'closed';
+
                 return `
-                    <div onclick="openTaskModal('${t.id}')" class="task-card glass p-6 rounded-[2rem] border border-slate-200 cursor-pointer flex flex-col h-full">
+                    <div onclick="window.openTaskModal('${t.id}')" class="task-card glass p-6 rounded-[2.5rem] border border-slate-200 cursor-pointer flex flex-col h-full">
                         <div class="flex justify-between items-start mb-4">
-                            <span class="text-[9px] font-bold px-2.5 py-1 rounded-lg ${p.bg} ${p.text} border ${p.border}">${p.label}</span>
+                            <span class="text-[9px] font-bold px-2.5 py-1 rounded-lg ${p.bg} ${p.text}">${p.label}</span>
                             <span class="text-[9px] font-bold px-2.5 py-1 rounded-lg ${s.bg} ${s.color}">${s.label}</span>
                         </div>
                         <h4 class="font-bold text-slate-800 mb-2 line-clamp-1">${t.title}</h4>
+                        <div class="mb-4">
+                            ${isDone ? '<p class="text-[9px] text-emerald-600 font-bold italic">✨ ยินดีด้วยคุณทำงานเสร็จก่อนเวลา</p>' : 
+                              isLate ? '<p class="text-[9px] text-rose-600 font-bold italic text-opacity-80">⚠️ คุณต้องพัฒนาตัวให้มากนะ งานยังไม่เสร็จ</p>' : ''}
+                        </div>
                         <p class="text-xs text-slate-400 line-clamp-2 mb-4 flex-1">${t.description || 'ไม่มีรายละเอียด'}</p>
                         <div class="pt-4 border-t border-slate-50 flex items-center justify-between text-[10px] font-bold text-slate-400">
                             <span># ${t.category}</span>
-                            <span>${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : ''}</span>
+                            <span>${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : 'ไม่ระบุกำหนด'}</span>
                         </div>
                     </div>
                 `;
-            }).join('') : `<div class="col-span-full py-20 text-center text-slate-300 font-bold">ไม่พบรายการงานครับ</div>`;
-            refreshIcons();
+            }).join('') : `<div class="col-span-full py-20 text-center text-slate-300 font-bold">ไม่พบรายการงานครับคุณกาย</div>`;
+            window.refreshIcons();
         };
 
         window.openTaskModal = (id = null) => {
             currentEditId = id;
             document.getElementById('task-modal').classList.remove('hidden');
-            document.getElementById('modal-title').innerText = id ? "แก้ไขรายละเอียดงาน" : "สั่งงานใหม่คุณกาย";
             
-            // Populate Dropdowns
             document.getElementById('task-cat-select').innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
             document.getElementById('task-prio-select').innerHTML = Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
             document.getElementById('task-status-select').innerHTML = Object.keys(STATUSES).map(k => `<option value="${k}">${STATUSES[k].label}</option>`).join('');
@@ -180,16 +176,14 @@
                 document.getElementById('task-desc').value = t.description;
                 document.getElementById('task-cat-select').value = t.category;
                 document.getElementById('task-prio-select').value = t.priority;
-                document.getElementById('task-reminder').value = t.reminder || '';
                 document.getElementById('task-deadline').value = t.deadline || '';
-                document.getElementById('task-link').value = t.link || '';
                 document.getElementById('task-status-select').value = t.status;
                 document.getElementById('btn-delete').classList.remove('hidden');
             } else {
                 document.querySelectorAll('#task-modal input, #task-modal textarea').forEach(el => el.value = '');
                 document.getElementById('btn-delete').classList.add('hidden');
             }
-            refreshIcons();
+            window.refreshIcons();
         };
 
         window.closeTaskModal = () => document.getElementById('task-modal').classList.add('hidden');
@@ -201,35 +195,29 @@
                 description: document.getElementById('task-desc').value,
                 category: document.getElementById('task-cat-select').value,
                 priority: document.getElementById('task-prio-select').value,
-                reminder: document.getElementById('task-reminder').value,
                 deadline: document.getElementById('task-deadline').value,
-                link: document.getElementById('task-link').value,
                 status: document.getElementById('task-status-select').value,
                 updatedAt: new Date().toISOString()
             };
-
             if(!data.title) return;
-
             if(currentEditId) tasks = tasks.map(t => t.id === currentEditId ? data : t);
             else tasks.push(data);
-
-            localStorage.setItem('kai_tasks_v5', JSON.stringify(tasks));
-            closeTaskModal();
-            renderTasks();
+            localStorage.setItem('kai_tasks_v8', JSON.stringify(tasks));
+            window.closeTaskModal();
+            window.renderTasks();
             updateDashboard();
         };
 
         window.deleteTask = () => {
             if(confirm("ยืนยันการลบงานนี้ใช่ไหมครับคุณกาย?")) {
                 tasks = tasks.filter(t => t.id !== currentEditId);
-                localStorage.setItem('kai_tasks_v5', JSON.stringify(tasks));
-                closeTaskModal();
-                renderTasks();
+                localStorage.setItem('kai_tasks_v8', JSON.stringify(tasks));
+                window.closeTaskModal();
+                window.renderTasks();
                 updateDashboard();
             }
         };
 
-        window.changeMonth = (v) => { calendarDate.setMonth(calendarDate.getMonth() + v); renderCalendar(); };
         window.renderCalendar = () => {
             const grid = document.getElementById('calendar-grid');
             const title = document.getElementById('calendar-title');
@@ -241,14 +229,14 @@
             const days = new Date(year, month + 1, 0).getDate();
 
             let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-3 text-center text-[10px] font-bold text-slate-300 uppercase">${d}</div>`).join('');
-            for(let i=0; i<first; i++) html += `<div class="bg-slate-50/50 h-24 sm:h-32"></div>`;
+            for(let i=0; i<first; i++) html += `<div class="bg-slate-50/30 h-24 sm:h-32"></div>`;
             for(let d=1; d<=days; d++) {
                 const dateS = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const dayTasks = tasks.filter(t => t.deadline?.startsWith(dateS));
                 const hasTask = dayTasks.length > 0;
                 html += `
-                    <div ${hasTask ? `onclick="switchView('tasks'); document.getElementById('filter-date-start').value='${dateS}'; renderTasks();"` : ''} 
-                         class="bg-white h-24 sm:h-32 p-2 border-t border-l border-slate-100 flex flex-col ${hasTask ? 'cursor-pointer hover:bg-indigo-50' : 'opacity-80'}">
+                    <div ${hasTask ? `onclick="window.switchView('tasks'); document.getElementById('filter-date-start').value='${dateS}'; window.renderTasks();"` : ''} 
+                         class="bg-white h-24 sm:h-32 p-2 border-t border-l border-slate-100 flex flex-col ${hasTask ? 'cursor-pointer hover:bg-indigo-50 transition-colors' : 'opacity-40'}">
                         <span class="text-xs font-bold ${hasTask ? 'text-indigo-600' : 'text-slate-300'}">${d}</span>
                         <div class="mt-1 space-y-1 overflow-hidden">
                             ${dayTasks.slice(0, 2).map(t => `<div class="text-[8px] truncate bg-indigo-50 text-indigo-700 p-1 rounded font-bold">${t.title}</div>`).join('')}
@@ -259,56 +247,60 @@
             grid.innerHTML = html;
         };
 
+        window.changeMonth = (v) => { calendarDate.setMonth(calendarDate.getMonth() + v); window.renderCalendar(); };
+
         window.renderPostItBoard = () => {
             const grid = document.getElementById('postit-grid');
             const colors = ['bg-yellow-50', 'bg-sky-50', 'bg-emerald-50', 'bg-rose-50', 'bg-violet-50'];
             grid.innerHTML = postIts.length ? postIts.map((p, i) => `
-                <div class="postit-card ${colors[i % colors.length]} p-6 rounded-[2rem] aspect-square flex flex-col relative group">
-                    <button onclick="deletePostIt('${p.id}')" class="absolute top-4 right-4 p-2 bg-white/50 opacity-0 group-hover:opacity-100 rounded-xl hover:text-rose-500 transition-all">
+                <div class="postit-card ${colors[i % colors.length]} p-6 rounded-[2.5rem] aspect-square flex flex-col relative group">
+                    <button onclick="window.deletePostIt('${p.id}')" class="absolute top-5 right-5 p-2 bg-white/50 opacity-0 group-hover:opacity-100 rounded-xl hover:text-rose-500 transition-all">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
-                    <textarea onblur="savePostIt('${p.id}', this.value)" 
+                    <textarea onblur="window.savePostIt('${p.id}', this.value)" 
                         class="flex-1 w-full bg-transparent border-none text-slate-700 font-medium outline-none resize-none text-sm leading-relaxed" 
-                        placeholder="พิมพ์โน้ต...">${p.text}</textarea>
+                        placeholder="พิมพ์โน้ตช่วยจำ...">${p.text}</textarea>
                 </div>
-            `).join('') : '';
-            refreshIcons();
+            `).join('') : '<div class="col-span-full text-center py-20 text-slate-300 font-bold">ยังไม่มีบันทึกครับคุณกาย</div>';
+            window.refreshIcons();
         };
 
         window.addPostIt = () => {
             postIts.unshift({ id: Date.now().toString(), text: '' });
-            localStorage.setItem('kai_postits_v5', JSON.stringify(postIts));
-            renderPostItBoard();
+            localStorage.setItem('kai_postits_v8', JSON.stringify(postIts));
+            window.renderPostItBoard();
         };
 
         window.savePostIt = (id, text) => {
             postIts = postIts.map(p => p.id === id ? { ...p, text } : p);
-            localStorage.setItem('kai_postits_v5', JSON.stringify(postIts));
+            localStorage.setItem('kai_postits_v8', JSON.stringify(postIts));
         };
 
         window.deletePostIt = (id) => {
             postIts = postIts.filter(p => p.id !== id);
-            localStorage.setItem('kai_postits_v5', JSON.stringify(postIts));
-            renderPostItBoard();
+            localStorage.setItem('kai_postits_v8', JSON.stringify(postIts));
+            window.renderPostItBoard();
         };
 
         window.saveSettings = () => {
-            const time = document.getElementById('set-notify-time').value;
-            settings.notifyTime = time;
-            localStorage.setItem('kai_settings', JSON.stringify(settings));
-            alert("บันทึกเวลาแจ้งเตือนเรียบร้อยครับคุณกาย");
+            settings.notifyTime = document.getElementById('set-notify-time').value;
+            localStorage.setItem('kai_settings_v8', JSON.stringify(settings));
+            alert("บันทึกการตั้งค่าการแจ้งเตือนแล้วครับคุณกาย");
+        };
+
+        window.toggleSidebar = (state) => {
+            const sb = document.getElementById('sidebar');
+            if(state === undefined) sb.classList.toggle('mobile-menu-active');
+            else if(state) sb.classList.add('mobile-menu-active');
+            else sb.classList.remove('mobile-menu-active');
         };
 
         window.login = () => {
-            if(!auth) { alert("ขณะนี้อยู่ใน Guest Mode (ข้อมูลจะบันทึกในเครื่อง) เนื่องจากติดข้อจำกัดด้านความปลอดภัยของเบราว์เซอร์ครับ"); return; }
-            signInWithPopup(auth, new GoogleAuthProvider())
-                .catch(err => alert("เกิดข้อผิดพลาดในการล็อกอิน: " + err.message));
+            if(auth) signInWithPopup(auth, new GoogleAuthProvider()).catch(e => console.error(e));
+            else alert("Preview Mode: กำลังรันแบบ Guest เนื่องจากติดข้อจำกัดด้านโดเมนครับ");
         };
 
-        window.logout = () => {
-            if(auth) signOut(auth).then(() => location.reload());
-            else location.reload();
-        };
+        window.logout = () => { if(auth) signOut(auth).then(() => location.reload()); else location.reload(); };
 
         window.exportToCSV = () => {
             const h = ["ชื่อเรื่อง", "หมวดหมู่", "ความสำคัญ", "สถานะ", "กำหนดส่ง"];
@@ -317,46 +309,51 @@
             const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(b);
-            a.download = `tasks_guy_${new Date().toLocaleDateString()}.csv`;
+            a.download = `reports_guy_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
         };
 
-        // Initialize
         window.onload = () => {
-            document.getElementById('filter-category').innerHTML += CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-            document.getElementById('filter-priority').innerHTML += Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
+            const catF = document.getElementById('filter-category');
+            if(catF) catF.innerHTML += CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            const prioF = document.getElementById('filter-priority');
+            if(prioF) prioF.innerHTML += Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
+            
             document.getElementById('set-notify-time').value = settings.notifyTime;
             
-            // Check Auth (Fallback if Firebase blocks domain)
-            if(auth) {
+            // App Start
+            window.switchView('dashboard');
+            
+            // Firebase Check - SAFE INIT
+            try {
+                const firebaseConfig = { apiKey: "MOCK", authDomain: "mock.firebaseapp.com" };
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
                 onAuthStateChanged(auth, (user) => {
                     if(user) {
                         document.getElementById('login-overlay').classList.add('hidden');
                         document.getElementById('user-name').innerText = user.displayName;
                     }
                 });
-            } else {
-                // If Firebase fails (Unauthorized domain), allow Guest Mode in Preview
+            } catch(e) {
+                // If Firebase fails (Invalid API Key), we still hide the overlay or let user bypass
                 document.getElementById('login-overlay').classList.add('hidden');
             }
-            
-            switchView('dashboard');
         };
     </script>
 
-    <!-- UI Components -->
+    <!-- UI Overlay for Login -->
     <div id="login-overlay" class="fixed inset-0 bg-slate-900 z-[1000] flex items-center justify-center p-6">
         <div class="glass p-10 rounded-[3rem] text-center max-w-sm w-full border border-white/20 shadow-2xl">
             <div class="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-200">
                 <i data-lucide="sparkles" class="text-white w-8 h-8"></i>
             </div>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">ยินดีต้อนรับครับ</h1>
-            <p class="text-slate-500 text-sm mb-10 leading-relaxed">กรุณาล็อกอินเพื่อเข้าสู่ระบบเลขาของคุณกาย และเข้าถึงข้อมูลแบบเรียลไทม์</p>
-            <button onclick="login()" class="w-full py-4 bg-white border border-slate-200 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-5 h-5">
-                เข้าใช้งานผ่าน Google
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">สวัสดีครับคุณกาย</h1>
+            <p class="text-slate-500 text-sm mb-10 leading-relaxed">กรุณาล็อกอินเพื่อเข้าสู่ระบบเลขาอัจฉริยะของคุณกาย</p>
+            <button onclick="window.login()" class="w-full py-4 bg-white border border-slate-200 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-5 h-5"> เข้าใช้งานผ่าน Google
             </button>
-            <p class="mt-6 text-[10px] text-slate-400">ระบบจะทำการซิงค์ข้อมูลลงบน Cloud อัตโนมัติ</p>
+            <p class="mt-4 text-[10px] text-slate-400">ระบบจะทำการซิงค์ข้อมูลลงในเครื่องของคุณ</p>
         </div>
     </div>
 
@@ -366,149 +363,155 @@
             <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-700 bg-clip-text text-transparent flex items-center gap-2">
                 <i data-lucide="sparkles" class="text-indigo-600 w-5 h-5"></i> Ai เลขากาย
             </h1>
-            <button onclick="toggleSidebar(false)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="x"></i></button>
+            <button onclick="window.toggleSidebar(false)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"><i data-lucide="x"></i></button>
         </div>
 
         <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-            <button onclick="switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-bold">
+            <button onclick="window.switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group font-bold">
                 <i data-lucide="layout-dashboard"></i> แดชบอร์ด
             </button>
-            <button onclick="switchView('tasks')" id="nav-tasks" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group">
+            <button onclick="window.switchView('tasks')" id="nav-tasks" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
                 <i data-lucide="list-checks"></i> งานทั้งหมด
             </button>
-            <button onclick="switchView('calendar')" id="nav-calendar" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group">
-                <i data-lucide="calendar"></i> ปฏิทินนัดหมาย
+            <button onclick="window.switchView('calendar')" id="nav-calendar" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
+                <i data-lucide="calendar"></i> ปฏิทิน
             </button>
-            <button onclick="switchView('postits')" id="nav-postits" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group">
-                <i data-lucide="sticky-note"></i> กระดานโน้ตด่วน
+            <button onclick="window.switchView('postits')" id="nav-postits" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
+                <i data-lucide="sticky-note"></i> โน้ตด่วน
             </button>
-            <button onclick="switchView('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group">
-                <i data-lucide="settings"></i> ตั้งค่าระบบ
+            <button onclick="window.switchView('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
+                <i data-lucide="settings"></i> ตั้งค่า
             </button>
         </nav>
 
         <div class="p-6 border-t border-slate-100 space-y-4">
-            <button onclick="openTaskModal()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <button onclick="window.openTaskModal()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
                 <i data-lucide="plus-circle"></i> สั่งงานใหม่
             </button>
-            <button onclick="logout()" class="w-full py-3 text-rose-500 font-bold text-xs hover:bg-rose-50 rounded-xl transition-all flex items-center justify-center gap-2">
-                <i data-lucide="log-out" class="w-4 h-4"></i> ออกจากระบบ
-            </button>
+            <button onclick="window.logout()" class="w-full py-3 text-rose-500 font-bold text-xs hover:bg-rose-50 rounded-xl transition-all">ออกจากระบบ</button>
         </div>
     </aside>
 
+    <!-- Main Container -->
     <main class="flex-1 flex flex-col h-screen overflow-hidden">
-        <header class="h-20 glass border-b border-slate-200 px-6 sm:px-8 flex items-center justify-between shrink-0">
+        <header class="h-20 glass border-b border-slate-200 px-6 sm:px-8 flex items-center justify-between shrink-0 z-30">
             <div class="flex items-center gap-4">
-                <button onclick="toggleSidebar(true)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
+                <button onclick="window.toggleSidebar(true)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"><i data-lucide="menu"></i></button>
                 <h2 id="header-title" class="text-lg font-bold text-slate-800">แดชบอร์ดสรุปงาน</h2>
             </div>
-            <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+            <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
                 <p id="user-name" class="text-xs font-bold text-slate-800 hidden sm:block">คุณกาย</p>
-                <div class="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold">K</div>
+                <div class="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold shadow-sm">K</div>
             </div>
         </header>
 
         <div id="view-container" class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
             
-            <!-- Dashboard -->
+            <!-- Dashboard View -->
             <div id="view-dashboard" class="space-y-6">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 kpi-card p-6 sm:p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
-                        <div class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-6">
-                            <div class="flex-1">
-                                <h3 class="text-xl font-bold mb-1">สรุปผลงาน KPI</h3>
-                                <p class="text-indigo-100 text-[10px] mb-4 opacity-70">วิเคราะห์ตามความสำเร็จของรายการงาน</p>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-                                        <p class="text-[9px] uppercase font-bold text-indigo-200 mb-1">Success</p>
-                                        <h4 id="kpi-success-rate" class="text-2xl font-bold">0%</h4>
-                                    </div>
-                                    <div class="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
-                                        <p class="text-[9px] uppercase font-bold text-indigo-200 mb-1">Target</p>
-                                        <h4 class="text-2xl font-bold">100%</h4>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="w-32 h-32 relative flex items-center justify-center shrink-0">
-                                <svg class="w-full h-full transform -rotate-90">
-                                    <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" class="text-indigo-400/30" />
-                                    <circle id="kpi-circle" cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" stroke-dasharray="364.4" stroke-dashoffset="364.4" class="text-white transition-all duration-1000" />
-                                </svg>
-                                <span id="kpi-total-perc" class="absolute text-2xl font-bold">0%</span>
-                            </div>
+                    <div class="lg:col-span-2 kpi-card p-6 sm:p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden flex items-center justify-between">
+                        <div class="relative z-10">
+                            <h3 class="text-xl font-bold mb-1 tracking-tight">ประสิทธิภาพงาน (KPI)</h3>
+                            <p class="text-indigo-100 text-[10px] mb-4 opacity-80 uppercase tracking-widest">วัดจากรายการงานที่สำเร็จ</p>
+                            <h4 id="kpi-success-rate" class="text-5xl font-bold">0%</h4>
                         </div>
+                        <div class="w-32 h-32 relative flex items-center justify-center shrink-0 z-10">
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" class="text-indigo-400/30" />
+                                <circle id="kpi-circle" cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" stroke-dasharray="364.4" stroke-dashoffset="364.4" class="text-white transition-all duration-1000" />
+                            </svg>
+                            <span id="kpi-total-perc" class="absolute text-2xl font-bold">0%</span>
+                        </div>
+                        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
                     </div>
                     <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-col">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="brain" class="text-indigo-600"></i> AI เลขาแนะนำ</h3>
-                        <div id="ai-insight" class="text-sm text-slate-600 leading-relaxed italic bg-slate-50 p-5 rounded-2xl border border-slate-100 flex-1">
-                            กำลังวิเคราะห์รายการงาน...
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 font-bold"><i data-lucide="brain" class="text-indigo-600"></i> AI เลขาวิจัย</h3>
+                        <div id="ai-insight" class="text-sm text-slate-600 italic bg-slate-50/50 p-6 rounded-[2rem] flex-1 border border-slate-100">
+                            กำลังเตรียมสรุปข้อมูลนัดหมาย...
                         </div>
                     </div>
                 </div>
                 
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="glass p-5 rounded-3xl border border-slate-100"><p class="text-[10px] font-bold text-slate-400 uppercase mb-1">งานค้าง</p><h4 id="stat-pending" class="text-2xl font-bold">0</h4></div>
-                    <div class="glass p-5 rounded-3xl border border-slate-100"><p class="text-[10px] font-bold text-rose-400 uppercase mb-1">งานด่วน</p><h4 id="stat-urgent" class="text-2xl font-bold text-rose-600">0</h4></div>
-                    <div class="glass p-5 rounded-3xl border border-slate-100"><p class="text-[10px] font-bold text-orange-400 uppercase mb-1">ใกล้ส่ง</p><h4 id="stat-near" class="text-2xl font-bold text-orange-600">0</h4></div>
-                    <div class="glass p-5 rounded-3xl border border-slate-100"><p class="text-[10px] font-bold text-emerald-400 uppercase mb-1">สำเร็จ</p><h4 id="stat-completed" class="text-2xl font-bold text-emerald-600">0</h4></div>
+                    <div onclick="window.switchView('tasks', 'pending')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">งานค้าง</p>
+                        <h4 id="stat-pending" class="text-2xl font-bold text-slate-800">0</h4>
+                    </div>
+                    <div onclick="window.switchView('tasks', 'urgent')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <p class="text-[10px] font-bold text-rose-400 uppercase mb-1 tracking-wider">งานด่วนมาก</p>
+                        <h4 id="stat-urgent" class="text-2xl font-bold text-rose-600">0</h4>
+                    </div>
+                    <div onclick="window.switchView('tasks', 'near')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <p class="text-[10px] font-bold text-orange-400 uppercase mb-1 tracking-wider">ใกล้ส่งงาน</p>
+                        <h4 id="stat-near" class="text-2xl font-bold text-orange-600">0</h4>
+                    </div>
+                    <div onclick="window.switchView('tasks', 'completed')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
+                        <p class="text-[10px] font-bold text-emerald-400 uppercase mb-1 tracking-wider">สำเร็จแล้ว</p>
+                        <h4 id="stat-completed" class="text-2xl font-bold text-emerald-600">0</h4>
+                    </div>
                 </div>
             </div>
 
-            <!-- Tasks -->
+            <!-- Tasks View -->
             <div id="view-tasks" class="hidden space-y-6">
-                <div class="glass p-5 rounded-[2rem] border border-slate-200 flex flex-wrap gap-3 items-center justify-between">
+                <div class="glass p-5 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-3 items-center justify-between shadow-sm">
                     <div class="flex flex-wrap gap-3">
-                        <select id="filter-status" onchange="renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold px-4 py-2 outline-none">
+                        <select id="filter-status" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
                             <option value="all">ทุกสถานะ</option>
                             <option value="pending">ยังไม่เริ่ม</option>
                             <option value="in_progress">กำลังทำ</option>
                             <option value="completed">เสร็จแล้ว</option>
                             <option value="closed">ปิดงาน</option>
                         </select>
-                        <select id="filter-priority" onchange="renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold px-4 py-2 outline-none">
+                        <select id="filter-priority" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
                             <option value="all">ทุกความสำคัญ</option>
                         </select>
-                        <select id="filter-category" onchange="renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold px-4 py-2 outline-none">
+                        <select id="filter-category" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
                             <option value="all">ทุกหมวดหมู่</option>
                         </select>
-                        <input type="date" id="filter-date-start" onchange="renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold px-4 py-2 outline-none">
+                        <input type="date" id="filter-date-start" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
                     </div>
-                    <button onclick="exportToCSV()" class="p-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all">ดาวน์โหลดตาราง</button>
+                    <button onclick="window.exportToCSV()" class="px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-[11px] hover:bg-indigo-100 transition-all border border-indigo-100">ดึงข้อมูล CSV</button>
                 </div>
-                <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
             </div>
 
-            <!-- Calendar -->
-            <div id="view-calendar" class="hidden glass p-6 rounded-[2.5rem] border border-slate-200">
-                <div class="flex justify-between items-center mb-6">
+            <!-- Calendar View -->
+            <div id="view-calendar" class="hidden glass p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-6 px-4">
                     <h2 id="calendar-title" class="text-2xl font-bold text-slate-800"></h2>
                     <div class="flex gap-2">
-                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-xl"><i data-lucide="chevron-left"></i></button>
-                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-xl"><i data-lucide="chevron-right"></i></button>
+                        <button onclick="window.changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"><i data-lucide="chevron-left"></i></button>
+                        <button onclick="window.changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"><i data-lucide="chevron-right"></i></button>
                     </div>
                 </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-100 rounded-2xl overflow-hidden border border-slate-100"></div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-100 rounded-[2rem] overflow-hidden border border-slate-100"></div>
             </div>
 
-            <!-- Post-its -->
-            <div id="view-postits" class="hidden space-y-6">
+            <!-- Post-its View -->
+            <div id="view-postits" class="hidden space-y-6 pb-20">
                 <div class="flex justify-between items-center">
                     <h2 class="text-2xl font-bold text-slate-800">กระดานโน้ตด่วน</h2>
-                    <button onclick="addPostIt()" class="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-md flex items-center gap-2"><i data-lucide="plus"></i> เพิ่มโน้ต</button>
+                    <button onclick="window.addPostIt()" class="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-md hover:scale-105 transition-all">เพิ่มบันทึก</button>
                 </div>
-                <div id="postit-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+                <div id="postit-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
             </div>
 
-            <!-- Settings -->
+            <!-- Settings View -->
             <div id="view-settings" class="hidden space-y-6 max-w-lg mx-auto">
-                <div class="glass p-8 rounded-[2.5rem] border border-slate-200">
-                    <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><i data-lucide="bell" class="text-indigo-600"></i> การแจ้งเตือน</h2>
-                    <div class="space-y-4">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase">เวลาแจ้งเตือนสรุปงานยามเช้า</label>
-                        <div class="flex gap-3">
-                            <input type="time" id="set-notify-time" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold">
-                            <button onclick="saveSettings()" class="px-8 bg-indigo-600 text-white rounded-2xl font-bold">บันทึก</button>
+                <div class="glass p-8 rounded-[3.5rem] border border-slate-200 shadow-sm">
+                    <h2 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2"><i data-lucide="bell" class="text-indigo-600"></i> แจ้งเตือนอัจฉริยะ</h2>
+                    <div class="space-y-6">
+                        <div class="space-y-2">
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">เวลาส่งรายงานสรุปงาน (Morning Report)</label>
+                            <div class="flex gap-3">
+                                <input type="time" id="set-notify-time" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-100 transition-all">
+                                <button onclick="window.saveSettings()" class="px-8 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">บันทึก</button>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                            <p class="text-[11px] text-indigo-600 font-bold">เลขาจะสรุปรายการงานด่วนและงานค้างทั้งหมดให้คุณกายผ่านหน้าจออัตโนมัติเมื่อถึงเวลาครับ</p>
                         </div>
                     </div>
                 </div>
@@ -519,35 +522,42 @@
 
     <!-- Task Modal -->
     <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center hidden p-4">
-        <div class="glass w-full max-w-xl rounded-[3rem] shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="modal-title" class="text-xl font-bold text-slate-800">สั่งงานใหม่</h2>
-                <button onclick="closeTaskModal()" class="p-2 hover:bg-slate-100 rounded-full text-slate-400"><i data-lucide="x"></i></button>
-            </div>
-            <div class="space-y-4">
-                <input type="text" id="task-title" placeholder="ชื่อเรื่อง" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium">
-                <textarea id="task-desc" placeholder="รายละเอียด..." rows="3" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium"></textarea>
-                <div class="grid grid-cols-2 gap-4">
-                    <select id="task-cat-select" class="p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none"></select>
-                    <select id="task-prio-select" class="p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none"></select>
+        <div class="glass w-full max-w-xl rounded-[3rem] shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="window.closeTaskModal()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-all"><i data-lucide="x"></i></button>
+            <h2 id="modal-title" class="text-xl font-bold text-slate-800 mb-6 font-bold">จัดการข้อมูลงานคุณกาย</h2>
+            
+            <div class="space-y-5">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">หัวข้อเรื่อง</label>
+                    <input type="text" id="task-title" placeholder="พิมพ์หัวเรื่องงาน..." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-indigo-100 transition-all">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">รายละเอียดเพิ่มเติม</label>
+                    <textarea id="task-desc" placeholder="ระบุสิ่งที่เลขาต้องช่วยเตือน..." rows="3" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-indigo-100 transition-all"></textarea>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[9px] font-bold text-slate-400 ml-1">Reminder</label>
-                        <input type="datetime-local" id="task-reminder" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">หมวดหมู่</label>
+                        <select id="task-cat-select" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700"></select>
                     </div>
-                    <div>
-                        <label class="text-[9px] font-bold text-slate-400 ml-1">Deadline</label>
-                        <input type="datetime-local" id="task-deadline" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">ระดับความสำคัญ</label>
+                        <select id="task-prio-select" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700"></select>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="url" id="task-link" placeholder="Link งาน" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                    <select id="task-status-select" class="p-4 bg-slate-50 border border-slate-200 rounded-2xl"></select>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">กำหนดส่ง (Deadline)</label>
+                        <input type="datetime-local" id="task-deadline" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">สถานะงาน</label>
+                        <select id="task-status-select" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700"></select>
+                    </div>
                 </div>
-                <div class="flex gap-4 pt-4">
-                    <button id="btn-delete" onclick="deleteTask()" class="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl font-bold hover:bg-rose-100 transition-all hidden">ลบ</button>
-                    <button onclick="saveTask()" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg active:scale-[0.98] transition-all">บันทึกข้อมูล</button>
+                <div class="flex gap-4 pt-6">
+                    <button id="btn-delete" onclick="window.deleteTask()" class="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl font-bold hover:bg-rose-100 transition-all hidden">ลบรายการ</button>
+                    <button onclick="window.saveTask()" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all">บันทึกข้อมูลงาน</button>
                 </div>
             </div>
         </div>
