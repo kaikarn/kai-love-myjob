@@ -1,59 +1,53 @@
-
+<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ai เลขาของคุณกาย - Platinum Pro v20</title>
+    <title>Ai เลขาของคุณกาย - Platinum Elite v25</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
-    <!-- Quill Rich Text Editor -->
+    <!-- Quill Pro Rich Text Editor -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     
     <style>
-        body { font-family: 'Prompt', 'Inter', sans-serif; background-color: #f1f5f9; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Prompt', 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
         .glass { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
-        .kpi-gradient { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+        .sidebar-active { background: #eef2ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .sidebar-item-active { background: #eef2ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         
-        .postit-yellow { background-color: #fef9c3; }
-        .postit-blue { background-color: #e0f2fe; }
-        .postit-pink { background-color: #fce7f3; }
-        .postit-green { background-color: #dcfce7; }
-        .postit-purple { background-color: #f3e8ff; }
-        .postit-orange { background-color: #ffedd5; }
-        
-        .postit-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: 1px solid rgba(0,0,0,0.05); }
-        .postit-card:hover { transform: translateY(-5px) rotate(1deg); box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1); }
-        .pinned { border: 3px solid #fbbf24 !important; order: -1; }
-        
-        .close-btn-red { background-color: #ef4444 !important; color: white !important; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); border-radius: 99px; padding: 10px; z-index: 100; }
-        
-        #journal-editor { height: 350px; background: white; border-radius: 0 0 1.5rem 1.5rem; }
+        .postit-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border-radius: 1.5rem; position: relative; }
+        .postit-card:hover { transform: translateY(-8px) rotate(1deg); box-shadow: 0 20px 40px -15px rgba(0,0,0,0.15); }
+        .postit-pinned { border: 4px solid #fbbf24 !important; order: -1; }
+
+        /* Priority Colors for Calendar */
+        .cal-urgent { background-color: #ef4444; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-focus { background-color: #3b82f6; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-important { background-color: #f97316; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-general { background-color: #22c55e; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        #journal-editor { height: 400px; background: white; border-radius: 0 0 1.5rem 1.5rem; }
         .ql-toolbar { border-radius: 1.5rem 1.5rem 0 0; background: #f8fafc; border-color: #e2e8f0 !important; }
         
-        .prio-dot-urgent { background-color: #ef4444; } /* Red */
-        .prio-dot-focus { background-color: #3b82f6; }  /* Blue */
-        .prio-dot-important { background-color: #f97316; } /* Orange */
-        .prio-dot-general { background-color: #22c55e; } /* Green */
-
         @keyframes ring { 0%, 100% { transform: rotate(0); } 10%, 30%, 50% { transform: rotate(15deg); } 20%, 40% { transform: rotate(-15deg); } }
         .bell-ring { animation: ring 2s infinite; }
+        .close-btn-red { background-color: #ef4444 !important; color: white !important; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); border-radius: 99px; padding: 10px; z-index: 100; transition: all 0.2s; }
+        .close-btn-red:hover { transform: scale(1.1); }
     </style>
 </head>
 <body class="min-h-screen flex overflow-hidden">
 
     <script>
+        /* STREAMING_CHUNK:Global Application State... */
         window.APP_DATA = {
-            user: JSON.parse(localStorage.getItem('guy_user_v20') || 'null'),
-            tasks: JSON.parse(localStorage.getItem('guy_tasks_v20') || '[]'),
-            postIts: JSON.parse(localStorage.getItem('guy_postits_v20') || '[]'),
-            diaries: JSON.parse(localStorage.getItem('guy_diaries_v20') || '{}'),
-            settings: JSON.parse(localStorage.getItem('guy_settings_v20') || JSON.stringify({
-                notifyDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'],
+            user: JSON.parse(localStorage.getItem('guy_v25_user') || 'null'),
+            tasks: JSON.parse(localStorage.getItem('guy_v25_tasks') || '[]'),
+            postIts: JSON.parse(localStorage.getItem('guy_v25_postits') || '[]'),
+            diaries: JSON.parse(localStorage.getItem('guy_v25_diaries') || '{}'),
+            settings: JSON.parse(localStorage.getItem('guy_v25_settings') || JSON.stringify({
+                notifyDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                 morningTime: '08:00',
                 afternoonTime: '13:30',
                 desktopNotify: true
@@ -64,44 +58,47 @@
             calendarDate: new Date(),
             currentEditId: null,
             quill: null,
-            selectedDiaryDate: new Date().toISOString().split('T')[0],
-            diaryMode: 'preview'
+            selectedDiaryDate: new Date().toISOString().split('T')[0]
         };
 
         const CATEGORIES = ['บริหาร', 'ออนไลน์', 'หน่วยรถ', 'โมเดิร์นเทรด', 'งานพัฒนาสินค้า', 'คำสั่งบอส', 'คำสั่งอาจารย์', 'งานออกแบบ', 'อบรม/ประชุม', 'งานประสานงาน', 'งานโปรเจค', 'ส่วนตัว', 'อื่นๆ'];
         const PRIORITIES = {
-            urgent: { label: 'ด่วนมาก', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', dot: 'prio-dot-urgent' },
-            focus: { label: 'งานโฟกัส', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', dot: 'prio-dot-focus' },
-            important: { label: 'งานสำคัญ', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100', dot: 'prio-dot-important' },
-            general: { label: 'งานทั่วไป', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', dot: 'prio-dot-general' }
+            urgent: { label: 'ด่วนมาก', class: 'cal-urgent', color: '#ef4444' },
+            focus: { label: 'งานโฟกัส', class: 'cal-focus', color: '#3b82f6' },
+            important: { label: 'งานสำคัญ', class: 'cal-important', color: '#f97316' },
+            general: { label: 'งานทั่วไป', class: 'cal-general', color: '#22c55e' }
         };
+
+        // Colors from image_6479d9.png
+        const POSTIT_COLORS = [
+            { bg: '#FFC0C0', text: '#1e293b' }, { bg: '#80B0E8', text: '#1e293b' },
+            { bg: '#D6D35F', text: '#1e293b' }, { bg: '#D1CAEA', text: '#1e293b' },
+            { bg: '#F4D242', text: '#1e293b' }, { bg: '#C45F3F', text: '#ffffff' },
+            { bg: '#008471', text: '#ffffff' }, { bg: '#F29CC3', text: '#1e293b' },
+            { bg: '#898E46', text: '#ffffff' }
+        ];
 
         window.refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
 
+        /* STREAMING_CHUNK:Global Controller Definitions... */
         window.handleLogin = () => {
             window.APP_DATA.user = { name: 'คุณกาย', avatar: 'K' };
-            localStorage.setItem('guy_user_v20', JSON.stringify(window.APP_DATA.user));
+            localStorage.setItem('guy_v25_user', JSON.stringify(window.APP_DATA.user));
             document.getElementById('login-overlay').classList.add('hidden');
             window.switchView('dashboard');
         };
 
         window.handleLogout = () => {
-            window.showConfirm("ต้องการออกจากระบบไหมครับคุณกาย?", () => {
-                localStorage.removeItem('guy_user_v20');
+            if(confirm("ต้องการออกจากระบบไหมครับคุณกาย?")) {
+                localStorage.removeItem('guy_v25_user');
                 location.reload();
-            });
+            }
         };
 
         window.toggleMobileSidebar = (state) => {
             const sidebar = document.getElementById('main-sidebar');
-            const backdrop = document.getElementById('sidebar-backdrop');
-            if(state) {
-                sidebar.classList.remove('-translate-x-full');
-                backdrop.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                backdrop.classList.add('hidden');
-            }
+            if(state) sidebar.classList.remove('-translate-x-full');
+            else sidebar.classList.add('-translate-x-full');
         };
 
         window.switchView = (view) => {
@@ -109,11 +106,11 @@
             const target = document.getElementById(`view-${view}`);
             if(target) target.classList.remove('hidden');
             
-            document.querySelectorAll('aside nav button').forEach(el => el.classList.remove('sidebar-item-active'));
+            document.querySelectorAll('aside nav button').forEach(el => el.classList.remove('sidebar-active'));
             const navBtn = document.getElementById(`nav-${view}`);
-            if(navBtn) navBtn.classList.add('sidebar-item-active');
+            if(navBtn) navBtn.classList.add('sidebar-active');
 
-            const titles = { dashboard:'แดชบอร์ดสรุปงาน', tasks:'งานที่ต้องทำ', archive:'งานสำเร็จแล้ว', calendar:'ปฏิทินนัดหมาย', postits:'กระดานโน้ตด่วน', diary:'สมุดบันทึกรายวัน', settings:'ตั้งค่าระบบ' };
+            const titles = { dashboard:'แดชบอร์ดสรุปงาน', tasks:'งานที่ต้องทำ', archive:'งานที่สำเร็จแล้ว', calendar:'ปฏิทินนัดหมาย', postits:'กระดานโน้ตด่วน', diary:'สมุดบันทึกรายวัน', settings:'ตั้งค่าระบบ' };
             document.getElementById('view-title').innerText = titles[view] || 'เลขาคุณกาย';
 
             if(view === 'dashboard') updateDashboard();
@@ -131,45 +128,40 @@
 
     <!-- Login Backdrop -->
     <div id="login-overlay" class="fixed inset-0 z-[1000] bg-slate-900 flex items-center justify-center p-6 hidden">
-        <div class="glass max-w-md w-full p-10 rounded-[3rem] text-center shadow-2xl border border-white/20">
-            <div class="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl">
-                <i data-lucide="sparkles" class="text-white w-10 h-10"></i>
+        <div class="glass max-w-md w-full p-12 rounded-[3.5rem] text-center shadow-2xl border border-white/20">
+            <div class="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-xl shadow-indigo-300">
+                <i data-lucide="sparkles" class="text-white w-12 h-12"></i>
             </div>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2 uppercase tracking-tighter">Ai Secretary Pro</h1>
-            <p class="text-slate-400 mb-10 text-sm italic">"เข้าสู่ระบบเพื่อจัดการงานอัจฉริยะของคุณกาย"</p>
-            <button onclick="handleLogin()" class="w-full py-4 bg-white border border-slate-200 rounded-2xl font-bold flex items-center justify-center gap-4 hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-6 h-6">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2 uppercase tracking-tighter">Ai Secretary Pro</h1>
+            <p class="text-slate-400 mb-12 text-sm italic">"เข้าสู่ระบบเพื่อจัดการงานอัจฉริยะของคุณกาย"</p>
+            <button onclick="handleLogin()" class="w-full py-5 bg-white border border-slate-200 rounded-3xl font-bold flex items-center justify-center gap-4 hover:bg-slate-50 transition-all active:scale-95 shadow-lg">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-7 h-7">
                 ล็อกอินผ่าน Google Account
             </button>
         </div>
     </div>
 
+    <!-- Confirm Modal -->
     <div id="confirm-modal" class="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-md hidden flex items-center justify-center p-6">
         <div class="glass max-w-sm w-full p-8 rounded-[2.5rem] text-center shadow-2xl">
             <h3 class="text-xl font-bold text-slate-800 mb-2">ยืนยันการดำเนินการ</h3>
             <p id="confirm-desc" class="text-slate-500 text-sm mb-8"></p>
             <div class="flex gap-3">
-                <button id="confirm-yes-btn" class="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">ยืนยัน</button>
+                <button id="confirm-yes-btn" class="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold">ยืนยัน</button>
                 <button onclick="window.closeConfirm()" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-2xl font-bold">ยกเลิก</button>
             </div>
         </div>
     </div>
 
-    <div id="toast-msg" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] glass px-8 py-4 rounded-2xl shadow-2xl border border-indigo-100 hidden transform translate-y-20 transition-transform duration-300">
-        <p id="toast-text" class="text-sm font-bold text-slate-700 flex items-center gap-2"></p>
-    </div>
-
+    <!-- STREAMING_CHUNK:Sidebar Navigation... -->
     <div id="sidebar-backdrop" onclick="toggleMobileSidebar(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[35] hidden lg:hidden"></div>
 
     <aside id="main-sidebar" class="fixed lg:relative inset-y-0 left-0 w-72 glass border-r border-slate-200 flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-300">
-        <div class="p-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-700 bg-clip-text text-transparent flex items-center gap-2">
-                    <i data-lucide="sparkles" class="text-indigo-600 w-5 h-5"></i> Ai เลขากาย
-                </h1>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">v20 Platinum Pro</p>
-            </div>
-            <button onclick="toggleMobileSidebar(false)" class="lg:hidden p-2 text-slate-400"><i data-lucide="x"></i></button>
+        <div class="p-8">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-700 bg-clip-text text-transparent flex items-center gap-3">
+                <i data-lucide="sparkles" class="text-indigo-600"></i> Ai เลขากาย
+            </h1>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Management Pro v25</p>
         </div>
 
         <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
@@ -200,11 +192,11 @@
             <button onclick="openTaskModal()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2 mb-4">
                 <i data-lucide="plus-circle" class="w-5 h-5"></i> สั่งงานใหม่
             </button>
-            <button onclick="handleLogout()" class="w-full py-2 text-rose-500 font-bold text-xs uppercase tracking-tighter">ออกจากระบบ</button>
+            <button onclick="handleLogout()" class="w-full py-2 text-rose-500 font-bold text-xs uppercase tracking-tighter text-center">ออกจากระบบ</button>
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/30">
         <!-- Header -->
         <header class="h-20 glass border-b border-slate-200 px-6 lg:px-8 flex items-center justify-between shrink-0 z-30">
             <div class="flex items-center gap-4">
@@ -214,7 +206,7 @@
             <div class="flex items-center gap-4">
                 <div class="relative group">
                     <button class="p-3 hover:bg-slate-100 rounded-2xl relative">
-                        <i data-lucide="bell" id="notif-bell" class="w-6 h-6 text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                        <i data-lucide="bell" id="notif-bell" class="w-6 h-6 text-slate-400 group-hover:text-indigo-600"></i>
                         <span id="bell-dot" class="absolute top-3 right-3 w-3 h-3 bg-rose-500 border-2 border-white rounded-full hidden"></span>
                     </button>
                     <div class="absolute right-0 mt-2 w-80 glass border border-slate-200 rounded-[2rem] shadow-2xl invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all p-6 z-50">
@@ -226,38 +218,36 @@
             </div>
         </header>
 
-        <!-- View Container -->
+        <!-- STREAMING_CHUNK:View Containers... -->
         <div id="view-container" class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar relative">
             
             <!-- Dashboard View -->
-            <div id="view-dashboard" class="space-y-8">
-                <!-- Summary Cards -->
+            <div id="view-dashboard" class="space-y-10">
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                    <div onclick="switchView('tasks')" class="glass p-6 rounded-[2.5rem] card-pending hover:shadow-xl transition-all cursor-pointer">
+                    <div onclick="switchView('tasks')" class="glass p-6 rounded-[2.5rem] card-pending hover:shadow-xl transition-all cursor-pointer border-l-8 border-amber-400">
                         <div class="flex justify-between items-center mb-2"><div class="p-3 bg-amber-50 text-amber-600 rounded-2xl"><i data-lucide="clock"></i></div><h4 id="dash-pending" class="text-3xl font-bold">0</h4></div>
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานค้าง</p>
                     </div>
-                    <div onclick="openDashboardModal('urgent')" class="glass p-6 rounded-[2.5rem] card-urgent hover:shadow-xl transition-all cursor-pointer">
+                    <div onclick="openDashboardModal('urgent')" class="glass p-6 rounded-[2.5rem] card-urgent hover:shadow-xl transition-all cursor-pointer border-l-8 border-rose-500">
                         <div class="flex justify-between items-center mb-2"><div class="p-3 bg-rose-50 text-rose-600 rounded-2xl"><i data-lucide="flame"></i></div><h4 id="dash-urgent" class="text-3xl font-bold">0</h4></div>
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานด่วน</p>
                     </div>
-                    <div onclick="openDashboardModal('focus')" class="glass p-6 rounded-[2.5rem] card-focus hover:shadow-xl transition-all cursor-pointer">
+                    <div onclick="openDashboardModal('focus')" class="glass p-6 rounded-[2.5rem] card-focus hover:shadow-xl transition-all cursor-pointer border-l-8 border-blue-500">
                         <div class="flex justify-between items-center mb-2"><div class="p-3 bg-blue-50 text-blue-600 rounded-2xl"><i data-lucide="target"></i></div><h4 id="dash-focus" class="text-3xl font-bold">0</h4></div>
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานโฟกัส</p>
                     </div>
-                    <div onclick="switchView('archive')" class="glass p-6 rounded-[2.5rem] card-completed hover:shadow-xl transition-all cursor-pointer">
+                    <div onclick="switchView('archive')" class="glass p-6 rounded-[2.5rem] card-completed hover:shadow-xl transition-all cursor-pointer border-l-8 border-emerald-500">
                         <div class="flex justify-between items-center mb-2"><div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><i data-lucide="check-circle-2"></i></div><h4 id="dash-completed" class="text-3xl font-bold">0</h4></div>
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานที่สำเร็จ</p>
                     </div>
                 </div>
 
-                <!-- KPI Radial -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 kpi-gradient p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden flex items-center justify-between">
+                    <div class="lg:col-span-2 kpi-gradient p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden flex items-center justify-between">
                         <div class="relative z-10">
-                            <h3 class="text-2xl font-bold mb-1">Performance Overview</h3>
+                            <h3 class="text-2xl font-bold mb-1">Performance Summary</h3>
                             <p class="text-indigo-100 text-sm mb-6 opacity-80">อัตราความสำเร็จโดยรวมของคุณกาย</p>
-                            <h4 id="kpi-rate" class="text-5xl font-bold">0%</h4>
+                            <h4 id="kpi-rate" class="text-6xl font-bold">0%</h4>
                         </div>
                         <div class="w-32 h-32 relative flex items-center justify-center shrink-0">
                             <svg class="w-full h-full transform -rotate-90">
@@ -267,20 +257,20 @@
                             <span id="kpi-perc" class="absolute text-xl font-bold">0%</span>
                         </div>
                     </div>
-                    <!-- AI Insight -->
-                    <div class="glass p-8 rounded-[3rem] border border-slate-200">
+                    <div class="glass p-8 rounded-[3rem] border border-slate-200 flex flex-col">
                         <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-indigo-600"><i data-lucide="brain"></i> AI เลขาวิจัย</h3>
-                        <div id="ai-insight" class="text-sm text-slate-500 leading-relaxed italic bg-slate-50 p-5 rounded-2xl border border-slate-100">กำลังรวบรวมข้อมูล...</div>
+                        <div id="ai-insight" class="text-sm text-slate-500 leading-relaxed italic bg-slate-50 p-5 rounded-2xl border border-slate-100 flex-1">กำลังรวบรวมข้อมูล...</div>
                     </div>
                 </div>
 
-                <!-- Pinned Post-its Section -->
-                <div class="space-y-6">
-                    <h4 class="font-bold text-slate-800 flex items-center gap-2 uppercase tracking-widest text-xs ml-2"><i data-lucide="pin" class="text-amber-500"></i> รายการจดบันทึกที่ปักหมุดไว้</h4>
-                    <div id="dash-pinned-notes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                <!-- Pinned Post-its at Bottom -->
+                <div class="space-y-6 pt-4">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-3 uppercase tracking-widest text-xs ml-4"><i data-lucide="pin" class="text-amber-500 fill-current"></i> บันทึกที่ปักหมุดไว้สำหรับคุณกาย</h4>
+                    <div id="dash-pinned-notes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-12"></div>
                 </div>
             </div>
 
+            <!-- STREAMING_CHUNK:Tasks and Archive Portals... -->
             <div id="view-tasks" class="hidden space-y-6">
                 <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
                     <div class="flex gap-3 flex-wrap">
@@ -292,10 +282,17 @@
                         </select>
                         <select id="filter-prio" onchange="renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
                             <option value="all">ทุกความสำคัญ</option>
+                            <option value="urgent">ด่วนมาก</option>
+                            <option value="focus">งานโฟกัส</option>
+                            <option value="important">งานสำคัญ</option>
+                            <option value="general">งานทั่วไป</option>
                         </select>
                         <input type="date" id="filter-date-created" onchange="renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold">
                     </div>
-                    <button onclick="exportTasks('active')" class="text-xs px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 active:scale-95 shadow-md">Export งานค้าง</button>
+                    <div class="flex gap-2">
+                        <button onclick="clearFilters()" class="text-xs px-6 py-2 bg-slate-100 text-slate-500 rounded-xl font-bold hover:bg-slate-200 transition-all">ล้างสถานะตัวกรอง</button>
+                        <button onclick="exportTasks('active')" class="text-xs px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 active:scale-95 shadow-md">Export งานค้าง</button>
+                    </div>
                 </div>
                 <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
             </div>
@@ -321,9 +318,18 @@
                 <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
             </div>
 
-            <div id="view-calendar" class="hidden glass p-8 rounded-[3rem] border border-slate-200">
-                <div class="flex justify-between items-center mb-8">
-                    <h2 id="calendar-title" class="text-3xl font-bold text-slate-800"></h2>
+            <!-- STREAMING_CHUNK:Elite Calendar with Bars and Legend... -->
+            <div id="view-calendar" class="hidden glass p-10 rounded-[3rem] border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 id="calendar-title" class="text-3xl font-bold text-slate-800"></h2>
+                        <div class="flex flex-wrap gap-4 mt-2">
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-3 h-3 rounded-full cal-urgent"></span> ด่วนมาก</span>
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-3 h-3 rounded-full cal-focus"></span> โฟกัส</span>
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-3 h-3 rounded-full cal-important"></span> สำคัญ</span>
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-3 h-3 rounded-full cal-general"></span> ทั่วไป</span>
+                        </div>
+                    </div>
                     <div class="flex gap-2">
                         <button onclick="changeMonth(-1)" class="p-3 hover:bg-slate-100 rounded-2xl transition-all"><i data-lucide="chevron-left"></i></button>
                         <button onclick="changeMonth(1)" class="p-3 hover:bg-slate-100 rounded-2xl transition-all"><i data-lucide="chevron-right"></i></button>
@@ -332,11 +338,12 @@
                 <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-200 rounded-[2.5rem] overflow-hidden border border-slate-200 shadow-inner"></div>
             </div>
 
+            <!-- Post-it and Diary Portals -->
             <div id="view-postits" class="hidden space-y-8">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-3xl font-bold text-slate-800">กระดานโน้ตด่วน</h2>
+                    <h2 class="text-3xl font-bold text-slate-800 tracking-tighter">กระดานโน้ตด่วน</h2>
                     <button onclick="addPostIt()" class="px-8 py-4 bg-indigo-600 text-white rounded-[2rem] font-bold shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-2 active:scale-95">
-                        <i data-lucide="plus"></i> เพิ่มโน้ตใหม่
+                        <i data-lucide="plus"></i> เพิ่มแผ่นโน้ต
                     </button>
                 </div>
                 <div id="postit-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-4 items-start pb-20"></div>
@@ -367,11 +374,11 @@
                             <button id="diary-edit-btn" onclick="toggleDiaryEdit(true)" class="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg active:scale-95 transition-all">แก้ไขบันทึก</button>
                         </div>
                         <div id="diary-view-content" class="flex-1 text-slate-600 leading-relaxed overflow-y-auto custom-scrollbar pr-4 text-lg"></div>
-                        <div id="diary-view-images" class="mt-8 flex gap-3 overflow-x-auto pb-4"></div>
                     </div>
                 </div>
             </div>
 
+            <!-- Settings -->
             <div id="view-settings" class="hidden max-w-2xl mx-auto space-y-8 pb-20">
                 <div class="glass p-10 rounded-[3.5rem] border border-slate-200 shadow-sm">
                     <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-3"><i data-lucide="bell" class="text-indigo-600"></i> ตั้งค่าการแจ้งเตือน</h3>
@@ -385,23 +392,8 @@
                                 <button onclick="toggleDay('thursday')" id="day-thursday" class="px-5 py-2.5 rounded-xl text-xs font-bold border transition-all">พฤหัสบดี</button>
                                 <button onclick="toggleDay('friday')" id="day-friday" class="px-5 py-2.5 rounded-xl text-xs font-bold border transition-all">ศุกร์</button>
                                 <button onclick="toggleDay('saturday')" id="day-saturday" class="px-5 py-2.5 rounded-xl text-xs font-bold border transition-all">เสาร์</button>
+                                <button onclick="toggleDay('sunday')" id="day-sunday" class="px-5 py-2.5 rounded-xl text-xs font-bold border transition-all">อาทิตย์</button>
                             </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-8">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block ml-1">รายงานสรุปเช้า</label>
-                                <input type="time" id="set-morning" onchange="saveSettings()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold border border-slate-200 outline-none">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block ml-1">รายงานสรุปบ่าย</label>
-                                <input type="time" id="set-afternoon" onchange="saveSettings()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold border border-slate-200 outline-none">
-                            </div>
-                        </div>
-                        <div class="pt-8 border-t border-slate-100">
-                            <label class="flex items-center justify-between p-5 bg-slate-50 rounded-3xl cursor-pointer hover:bg-slate-100 transition-all">
-                                <span class="text-sm font-bold text-slate-700 flex items-center gap-3"><i data-lucide="monitor" class="w-5 h-5 text-indigo-500"></i> แจ้งเตือนบนหน้าจอคอมพิวเตอร์</span>
-                                <input type="checkbox" id="set-desktop" onchange="saveSettings()" class="w-6 h-6 accent-indigo-600 rounded-lg">
-                            </label>
                         </div>
                     </div>
                 </div>
@@ -409,22 +401,18 @@
         </div>
     </main>
 
-    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-4">
+    <!-- STREAMING_CHUNK:Modals (Task, Diary, Summary)... -->
+    <!-- Task Modal -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-4 sm:p-8">
         <div class="glass w-full max-w-2xl rounded-[3.5rem] shadow-2xl border border-white p-10 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
             <button onclick="closeTaskModal()" class="absolute top-8 right-8 close-btn-red hover:scale-110 transition-all flex items-center justify-center h-10 w-10">
-                <i data-lucide="x" class="w-6 h-6 text-white"></i>
+                <i data-lucide="x" class="text-white w-6 h-6"></i>
             </button>
-            <h2 id="modal-title" class="text-2xl font-bold text-slate-800 mb-8">บันทึกรายละเอียดงาน</h2>
+            <h2 id="modal-title" class="text-2xl font-bold text-slate-800 mb-8 tracking-tighter">รายละเอียดงาน</h2>
             <div id="modal-feedback" class="mb-6 hidden"></div>
             <div class="space-y-6">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">หัวข้อเรื่อง</label>
-                    <input type="text" id="task-title" placeholder="ชื่อเรื่องงาน..." class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-lg focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">รายละเอียดงาน</label>
-                    <textarea id="task-desc" placeholder="ระบุรายละเอียด..." rows="3" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-indigo-500"></textarea>
-                </div>
+                <input type="text" id="task-title" placeholder="ชื่อเรื่องงาน..." class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-lg focus:ring-4 focus:ring-indigo-50 transition-all">
+                <textarea id="task-desc" placeholder="ระบุรายละเอียด..." rows="3" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-4 focus:ring-indigo-50 transition-all"></textarea>
                 <div class="grid grid-cols-2 gap-4">
                     <select id="task-cat" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none"></select>
                     <select id="task-prio" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none"></select>
@@ -445,102 +433,78 @@
                     </div>
                 </div>
                 <div>
-                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase">แจ้งเตือนล่วงหน้าพิเศษ</label>
+                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase tracking-widest">วันแจ้งเตือนล่วงหน้าพิเศษ</label>
                     <input type="datetime-local" id="task-special-alert" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold">
                 </div>
-                <div class="space-y-3">
-                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase">ลิงก์งาน (สูงสุด 3 ลิงก์)</label>
-                    <div class="flex gap-2"><input type="url" id="task-link-1" placeholder="Link 1..." class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium"><button onclick="goToLink(1)" class="px-4 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all"><i data-lucide="external-link"></i></button></div>
-                    <div class="flex gap-2"><input type="url" id="task-link-2" placeholder="Link 2..." class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium"><button onclick="goToLink(2)" class="px-4 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all"><i data-lucide="external-link"></i></button></div>
-                    <div class="flex gap-2"><input type="url" id="task-link-3" placeholder="Link 3..." class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium"><button onclick="goToLink(3)" class="px-4 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all"><i data-lucide="external-link"></i></button></div>
-                </div>
                 <div>
-                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase">หมายเหตุ</label>
+                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase tracking-widest">หมายเหตุ</label>
                     <textarea id="task-notes" placeholder="จดบันทึกเสริม..." rows="2" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium"></textarea>
+                </div>
+                <!-- Links Section v25 -->
+                <div class="space-y-4 pt-4 border-t border-slate-50">
+                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase tracking-widest block font-bold">ลิงก์แนบงาน (สูงสุด 3 ลิงก์)</label>
+                    <div class="flex gap-3"><input type="url" id="task-link-1" placeholder="Link 1..." class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium"><button onclick="goToLink(1)" class="px-5 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all"><i data-lucide="external-link"></i></button></div>
+                    <div class="flex gap-3"><input type="url" id="task-link-2" placeholder="Link 2..." class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium"><button onclick="goToLink(2)" class="px-5 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all"><i data-lucide="external-link"></i></button></div>
+                    <div class="flex gap-3"><input type="url" id="task-link-3" placeholder="Link 3..." class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium"><button onclick="goToLink(3)" class="px-5 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all"><i data-lucide="external-link"></i></button></div>
                 </div>
                 <div id="log-section" class="hidden border-t pt-8">
                     <h5 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4"></i> ประวัติการอัปเดต</h5>
                     <div id="log-list" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-2"></div>
                 </div>
-                <div class="flex gap-4 pt-4">
-                    <button id="btn-delete" onclick="window.handleDeleteTask()" class="px-8 py-5 bg-rose-50 text-rose-600 rounded-3xl font-bold hidden hover:bg-rose-100 border border-rose-100 active:scale-95">ลบงานนี้</button>
+                <div class="flex gap-4 pt-4 pb-8">
+                    <button id="btn-delete" onclick="window.handleDeleteTask()" class="px-8 py-5 bg-rose-50 text-rose-600 rounded-3xl font-bold hidden hover:bg-rose-100 border border-rose-100 active:scale-95 transition-all">ลบงานนี้</button>
                     <button onclick="window.saveTask()" class="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-bold shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">บันทึกข้อมูลงาน</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Diary Rich Editor Overlay -->
     <div id="diary-editor-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center hidden p-4">
-        <div class="glass w-full max-w-4xl rounded-[3.5rem] shadow-2xl p-10 flex flex-col h-[90vh]">
+        <div class="glass w-full max-w-5xl rounded-[3.5rem] shadow-2xl p-10 flex flex-col h-[90vh]">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-slate-800">แก้ไขบันทึก: <span id="diary-edit-date-title" class="text-indigo-600"></span></h2>
+                <h2 class="text-2xl font-bold text-slate-800 uppercase tracking-tighter">แก้ไขบันทึก: <span id="diary-edit-date-title" class="text-indigo-600"></span></h2>
                 <button onclick="toggleDiaryEdit(false)" class="p-3 bg-rose-500 text-white rounded-full active:scale-90"><i data-lucide="x"></i></button>
             </div>
-            <div id="journal-editor" class="flex-1"></div>
-            <div class="mt-8 flex justify-between items-center gap-4">
-                <div class="flex gap-3">
-                    <label class="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all cursor-pointer flex items-center gap-2">
-                        <i data-lucide="image"></i> แนบรูปภาพ
-                        <input type="file" id="diary-image-input" class="hidden" accept="image/*" onchange="handleDiaryImage(this)">
-                    </label>
-                    <button onclick="insertEmoji()" class="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
-                        <i data-lucide="smile"></i> ใส่อิโมจิ
+            <div id="journal-editor" class="flex-1 shadow-inner"></div>
+            <div class="mt-8 flex justify-between items-center">
+                <div class="flex gap-4">
+                    <button onclick="insertEmoji()" class="px-8 py-4 bg-slate-100 text-slate-600 rounded-3xl font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
+                        <i data-lucide="smile"></i> เลือกอิโมจิ
                     </button>
                 </div>
                 <div class="flex gap-4">
                     <button onclick="toggleDiaryEdit(false)" class="px-8 py-4 bg-slate-50 text-slate-400 rounded-2xl font-bold">ยกเลิก</button>
-                    <button onclick="saveDiary()" class="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all">บันทึกข้อมูล</button>
+                    <button onclick="saveDiary()" class="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition-all uppercase tracking-widest">บันทึกข้อมูล</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="dash-list-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-4">
-        <div class="glass w-full max-w-xl rounded-[3.5rem] shadow-2xl border border-white p-10 max-h-[80vh] overflow-y-auto custom-scrollbar relative">
-            <button onclick="closeDashboardModal()" class="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-full text-slate-400"><i data-lucide="x"></i></button>
-            <h2 id="dash-modal-title" class="text-2xl font-bold text-slate-800 mb-8"></h2>
-            <div id="dash-modal-list" class="space-y-4"></div>
+    <!-- Dash Summary Lists Modal -->
+    <div id="dash-list-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-8">
+        <div class="glass w-full max-w-2xl rounded-[4rem] shadow-2xl border border-white p-12 max-h-[80vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="closeDashboardModal()" class="absolute top-10 right-10 p-4 hover:bg-slate-100 rounded-full text-slate-400 transition-all"><i data-lucide="x"></i></button>
+            <h2 id="dash-modal-title" class="text-3xl font-bold text-slate-800 mb-10 tracking-tighter uppercase"></h2>
+            <div id="dash-modal-list" class="space-y-4 pb-12"></div>
         </div>
     </div>
 
+    <!-- STREAMING_CHUNK:Global JavaScript Logic... -->
     <script>
-        window.showConfirm = (text, callback) => {
-            document.getElementById('confirm-desc').innerText = text;
-            document.getElementById('confirm-modal').classList.remove('hidden');
-            document.getElementById('confirm-yes-btn').onclick = () => {
-                callback();
-                window.closeConfirm();
-            };
-        };
-        window.closeConfirm = () => document.getElementById('confirm-modal').classList.add('hidden');
-        
-        window.showToast = (msg) => {
-            const toast = document.getElementById('toast-msg');
-            const text = document.getElementById('toast-text');
-            if(!toast || !text) return;
-            text.innerText = msg;
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.remove('translate-y-20'), 10);
-            setTimeout(() => {
-                toast.classList.add('translate-y-20');
-                setTimeout(() => toast.classList.add('hidden'), 300);
-            }, 3000);
-        };
-
+        /* STREAMING_CHUNK:Global Controller Implementation... */
         function updateDashboard() {
             const tasks = window.APP_DATA.tasks;
             const stats = {
                 pending: tasks.filter(t => t.status === 'pending').length,
-                urgent: tasks.filter(t => (t.priority === 'urgent') && t.status !== 'closed').length,
-                focus: tasks.filter(t => t.priority === 'focus' && t.status !== 'closed').length,
+                urgent: tasks.filter(t => (t.priority === 'urgent') && t.status !== 'closed' && t.status !== 'completed').length,
+                focus: tasks.filter(t => t.priority === 'focus' && t.status !== 'closed' && t.status !== 'completed').length,
                 completed: tasks.filter(t => t.status === 'completed' || t.status === 'closed').length
             };
 
             for(const k in stats) {
                 const el = document.getElementById(`dash-${k}`);
                 if(el) el.innerText = stats[k];
-                const el2 = document.getElementById(`dash-stat-${k}`);
-                if(el2) el2.innerText = stats[k];
             }
 
             const total = tasks.length || 1;
@@ -550,7 +514,7 @@
             const circleEl = document.getElementById('kpi-circle');
             if(rateEl) rateEl.innerText = rate + '%';
             if(percEl) percEl.innerText = rate + '%';
-            if(circleEl) circleEl.style.strokeDashoffset = 364.4 - (364.4 * rate / 100);
+            if(circleEl) circleEl.style.strokeDashoffset = 502.6 - (502.6 * rate / 100);
 
             const aiInsight = document.getElementById('ai-insight');
             if(aiInsight) {
@@ -559,16 +523,16 @@
                 else aiInsight.innerText = `สถานะงานปกติครับ อย่าลืมตรวจสอบงานโฟกัส ${stats.focus} รายการที่คุณกายวางแผนไว้นะครับ`;
             }
 
-            // Pinned Post-its at bottom
+            // Pinned Post-its at Bottom v25
             const pinnedNotes = window.APP_DATA.postIts.filter(p => p.pinned);
             const dashPinnedGrid = document.getElementById('dash-pinned-notes');
             if(dashPinnedGrid) {
                 dashPinnedGrid.innerHTML = pinnedNotes.map(p => `
-                    <div onclick="window.switchView('postits')" class="p-6 rounded-[2.5rem] shadow-sm flex flex-col ${p.color || 'postit-yellow'} border border-black/5 hover:scale-[1.02] transition-all cursor-pointer h-40">
-                        <i data-lucide="pin" class="w-3 h-3 text-amber-500 fill-current mb-2"></i>
-                        <p class="text-xs font-medium text-slate-700 line-clamp-4 leading-relaxed">${p.text || 'โน้ตว่าง...'}</p>
+                    <div onclick="window.switchView('postits')" class="p-10 rounded-[3.5rem] shadow-2xl flex flex-col border border-black/5 hover:scale-[1.03] transition-all cursor-pointer h-64" style="background-color: ${p.color?.bg || '#FFC0C0'}; color: ${p.color?.text || '#1e293b'}">
+                        <i data-lucide="pin" class="w-5 h-5 text-amber-500 fill-current mb-6"></i>
+                        <p class="text-base font-bold line-clamp-5 leading-relaxed">${p.text || 'โน้ตว่าง...'}</p>
                     </div>
-                `).join('') || '<div class="col-span-full py-6 text-center text-slate-300 italic text-xs font-bold">ยังไม่มีโน้ตปักหมุดไว้ครับคุณกาย</div>';
+                `).join('') || '<div class="col-span-full py-16 text-center text-slate-300 italic text-sm font-bold border-2 border-dashed border-slate-200 rounded-[3rem]">ยังไม่มีโน้ตปักหมุดไว้ครับคุณกาย</div>';
             }
             
             updateNotifBell();
@@ -576,23 +540,21 @@
         }
 
         window.openDashboardModal = (type) => {
-            const list = window.APP_DATA.tasks.filter(t => {
-                if(t.status === 'completed' || t.status === 'closed') return false;
-                return t.priority === type;
-            });
-            document.getElementById('dash-modal-title').innerText = type === 'urgent' ? 'รายการงานด่วนมาก' : 'รายการงานโฟกัส';
+            const list = window.APP_DATA.tasks.filter(t => (t.status !== 'completed' && t.status !== 'closed' && t.priority === type));
+            document.getElementById('dash-modal-title').innerText = type === 'urgent' ? 'รายการงานด่วนพิเศษ' : 'รายการงานโฟกัสหลัก';
             document.getElementById('dash-modal-list').innerHTML = list.map(t => `
-                <div onclick="closeDashboardModal(); openTaskModal('${t.id}')" class="p-4 bg-slate-50 hover:bg-white border border-slate-100 rounded-2xl cursor-pointer shadow-sm transition-all flex justify-between items-center">
-                    <span class="font-bold text-slate-700 text-sm">${t.title}</span>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                <div onclick="closeDashboardModal(); openTaskModal('${t.id}')" class="p-6 bg-slate-50 hover:bg-white border border-slate-100 rounded-3xl cursor-pointer shadow-sm transition-all flex justify-between items-center group">
+                    <span class="font-bold text-slate-700 text-lg group-hover:text-indigo-600 transition-colors">${t.title}</span>
+                    <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:translate-x-3 transition-transform"></i>
                 </div>
-            `).join('') || '<p class="text-center text-slate-400 py-4 italic">ไม่มีรายการงานในหมวดนี้ครับ</p>';
+            `).join('') || '<p class="text-center text-slate-400 py-16 italic font-bold">ไม่มีรายการงานในหมวดนี้ครับคุณกาย</p>';
             document.getElementById('dash-list-modal').classList.remove('hidden');
             refreshIcons();
         };
 
         window.closeDashboardModal = () => document.getElementById('dash-list-modal').classList.add('hidden');
 
+        /* STREAMING_CHUNK:Tasks Rendering Logic with Filters v25... */
         window.renderTasks = () => {
             const grid = document.getElementById('task-grid');
             if(!grid) return;
@@ -612,8 +574,16 @@
             });
 
             filtered.sort((a,b) => new Date(a.deadline) - new Date(b.deadline));
-            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-20 text-center text-slate-300 font-bold border-2 border-dashed border-slate-100 rounded-[3rem]">ยังไม่มีรายการงานค้างครับคุณกาย</div>`;
+            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-24 text-center text-slate-300 font-bold border-2 border-dashed border-slate-200 rounded-[4rem]">ไม่พบงานที่คุณกายตามหาครับ</div>`;
             refreshIcons();
+        };
+
+        window.clearFilters = () => {
+            document.getElementById('filter-cat').value = 'all';
+            document.getElementById('filter-status').value = 'all';
+            document.getElementById('filter-prio').value = 'all';
+            document.getElementById('filter-date-created').value = '';
+            renderTasks();
         };
 
         window.renderArchive = () => {
@@ -630,7 +600,7 @@
             if(status !== 'all') filtered = filtered.filter(t => t.status === status);
 
             filtered.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-20 text-center text-slate-300 font-bold border-2 border-dashed border-slate-100 rounded-[3rem]">ไม่พบรายการงานสำเร็จในช่วงเวลานี้ครับ</div>`;
+            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-24 text-center text-slate-300 font-bold border-2 border-dashed border-slate-200 rounded-[4rem]">ยังไม่มีรายการงานสำเร็จครับ</div>`;
             refreshIcons();
         };
 
@@ -638,24 +608,25 @@
             const p = PRIORITIES[t.priority] || PRIORITIES.general;
             const updateTxt = t.updatedAt ? new Date(t.updatedAt).toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' }) : 'N/A';
             return `
-                <div onclick="openTaskModal('${t.id}')" class="postit-card glass p-7 rounded-[2.5rem] border border-slate-200 flex flex-col h-full shadow-sm">
-                    <div class="flex justify-between mb-5">
-                        <span class="text-[9px] font-bold px-3 py-1.5 rounded-xl ${p.bg} ${p.color} border ${p.border}">${p.label}</span>
-                        <span class="text-[9px] font-bold px-3 py-1.5 bg-slate-100 text-slate-400 rounded-xl uppercase">${t.status}</span>
+                <div onclick="openTaskModal('${t.id}')" class="postit-card glass p-10 rounded-[3.5rem] border border-slate-200 flex flex-col h-full shadow-2xl relative overflow-hidden">
+                    <div class="flex justify-between mb-8">
+                        <span class="text-[10px] font-bold px-4 py-2 rounded-2xl ${p.class} text-white shadow-lg uppercase tracking-tighter">${PRIORITIES[t.priority].label}</span>
+                        <span class="text-[10px] font-bold px-4 py-2 bg-slate-100 text-slate-500 rounded-2xl uppercase tracking-tighter">${t.status}</span>
                     </div>
-                    <h4 class="font-bold text-slate-800 mb-2 line-clamp-1 text-lg">${t.title}</h4>
-                    <p class="text-xs text-slate-500 mb-6 flex-1 line-clamp-2 leading-relaxed">${t.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
-                    <div class="pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] font-bold text-slate-400">
-                        <div class="flex flex-col gap-1">
-                            <span class="uppercase">อัปเดต: ${updateTxt}</span>
-                            <span class="flex items-center gap-1.5 uppercase"><i data-lucide="tag" class="w-3.5 h-3.5"></i> ${t.category}</span>
+                    <h4 class="font-bold text-slate-800 mb-4 line-clamp-1 text-2xl tracking-tighter uppercase">${t.title}</h4>
+                    <p class="text-sm text-slate-500 mb-10 flex-1 line-clamp-2 leading-relaxed font-medium">${t.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                    <div class="pt-8 border-t border-slate-50 flex justify-between items-center text-[11px] font-bold text-slate-400">
+                        <div class="flex flex-col gap-1.5">
+                            <span class="uppercase opacity-60">อัปเดต: ${updateTxt}</span>
+                            <span class="flex items-center gap-2 uppercase tracking-widest text-indigo-500"><i data-lucide="tag" class="w-4 h-4"></i> ${t.category}</span>
                         </div>
-                        <span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-xl">${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : ''}</span>
+                        <span class="bg-indigo-50 text-indigo-600 px-5 py-2.5 rounded-[1.5rem] border border-indigo-100">${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : 'N/A'}</span>
                     </div>
                 </div>
             `;
         }
 
+        /* STREAMING_CHUNK:Task CRUD Logic v25... */
         window.openTaskModal = (id = null) => {
             window.STATE.currentEditId = id;
             const modal = document.getElementById('task-modal');
@@ -674,14 +645,16 @@
                 document.getElementById('task-status').value = t.status || 'pending';
                 document.getElementById('task-special-alert').value = t.specialAlert || '';
                 document.getElementById('task-notes').value = t.notes || '';
-                for(let i=1; i<=3; i++) document.getElementById(`task-link-${i}`).value = t.links?.[i-1] || '';
+                document.getElementById('task-link-1').value = t.links?.[0] || '';
+                document.getElementById('task-link-2').value = t.links?.[1] || '';
+                document.getElementById('task-link-3').value = t.links?.[2] || '';
                 
                 document.getElementById('btn-delete').classList.remove('hidden');
                 document.getElementById('log-section').classList.remove('hidden');
                 document.getElementById('log-list').innerHTML = (t.logs || []).map(l => `
-                    <div class="text-[9px] p-2.5 bg-slate-50 rounded-xl flex justify-between border border-slate-100 shadow-sm">
-                        <span class="font-bold text-slate-600">${l.action}</span>
-                        <span class="text-slate-400">${new Date(l.time).toLocaleString('th-TH')}</span>
+                    <div class="text-[11px] p-4 bg-slate-50 rounded-3xl flex justify-between border border-slate-100 shadow-sm">
+                        <span class="font-bold text-slate-600 uppercase tracking-tighter">${l.action}</span>
+                        <span class="text-slate-400 font-bold">${new Date(l.time).toLocaleString('th-TH')}</span>
                     </div>
                 `).reverse().join('');
             } else {
@@ -728,11 +701,11 @@
             } else {
                 window.APP_DATA.tasks.push(data);
             }
-            localStorage.setItem('guy_tasks_v20', JSON.stringify(window.APP_DATA.tasks));
+            localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
             window.closeTaskModal();
             updateDashboard();
-            window.showToast("บันทึกข้อมูลงานเรียบร้อย");
-            window.switchView(data.status === 'completed' || data.status === 'closed' ? 'archive' : 'tasks');
+            const isFinished = (data.status === 'completed' || data.status === 'closed');
+            window.switchView(isFinished ? 'archive' : 'tasks');
         };
 
         window.goToLink = (num) => {
@@ -741,55 +714,51 @@
         };
 
         window.handleDeleteTask = () => {
-            window.showConfirm("ลบงานนี้ถาวร?", () => {
+            if(confirm("ลบงานนี้ถาวร? ข้อมูลจะกู้คืนไม่ได้นะครับคุณกาย")) {
                 window.APP_DATA.tasks = window.APP_DATA.tasks.filter(t => t.id !== window.STATE.currentEditId);
-                localStorage.setItem('guy_tasks_v20', JSON.stringify(window.APP_DATA.tasks));
+                localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
                 window.closeTaskModal();
                 updateDashboard();
                 renderTasks();
-                window.showToast("ลบรายการงานแล้ว");
-            });
+            }
         };
 
+        /* STREAMING_CHUNK:Elite Post-it Logic v25... */
         window.renderPostIts = () => {
             const container = document.getElementById('postit-grid');
             if(!container) return;
             const sorted = [...window.APP_DATA.postIts].sort((a,b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
             container.innerHTML = sorted.map(p => `
-                <div class="postit-card p-6 rounded-[2.5rem] shadow-sm relative flex flex-col ${p.color || 'postit-yellow'} ${p.pinned ? 'pinned scale-105 z-10' : ''} h-64">
-                    <div class="flex justify-between items-center mb-4">
-                        <button onclick="togglePinPostIt('${p.id}')" class="p-2 bg-white/50 rounded-xl hover:bg-white transition-all"><i data-lucide="pin" class="w-4 h-4 ${p.pinned ? 'fill-current text-amber-500' : 'text-slate-400'}"></i></button>
-                        <button onclick="deletePostIt('${p.id}')" class="p-2 bg-white/50 rounded-xl hover:bg-rose-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                <div class="postit-card p-10 shadow-2xl relative flex flex-col ${p.pinned ? 'postit-pinned scale-105 z-10' : ''} h-80" style="background-color: ${p.color?.bg || '#FFC0C0'}; color: ${p.color?.text || '#1e293b'}">
+                    <div class="flex justify-between items-center mb-8">
+                        <button onclick="togglePinPostIt('${p.id}')" class="p-3 bg-white/30 rounded-2xl hover:bg-white/60 transition-all"><i data-lucide="pin" class="w-6 h-6 ${p.pinned ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}"></i></button>
+                        <button onclick="deletePostIt('${p.id}')" class="p-3 bg-white/30 rounded-2xl hover:bg-rose-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-6 h-6"></i></button>
                     </div>
-                    <textarea onblur="savePostItText('${p.id}', this.value)" class="flex-1 w-full bg-transparent border-none outline-none text-slate-700 font-medium resize-none custom-scrollbar leading-relaxed" placeholder="พิมพ์โน้ต...">${p.text}</textarea>
+                    <textarea onblur="savePostItText('${p.id}', this.value)" class="flex-1 w-full bg-transparent border-none outline-none font-bold text-xl resize-none custom-scrollbar leading-relaxed" placeholder="พิมพ์ข้อความ...">${p.text}</textarea>
                 </div>
-            `).join('') || '<p class="col-span-full py-20 text-center text-slate-300 font-bold">ยังไม่มีโน้ตบนกระดานครับคุณกาย</p>';
+            `).join('') || '<p class="col-span-full py-24 text-center text-slate-300 font-bold italic border-2 border-dashed border-slate-200 rounded-[4rem]">ยังไม่มีแผ่นโน้ตครับคุณกาย</p>';
             refreshIcons();
         };
 
         window.addPostIt = () => {
-            const colors = ['postit-yellow', 'postit-blue', 'postit-pink', 'postit-green', 'postit-purple', 'postit-orange'];
-            window.APP_DATA.postIts.unshift({ id: Date.now().toString(), text: '', color: colors[Math.floor(Math.random() * colors.length)], pinned: false });
-            localStorage.setItem('guy_postits_v20', JSON.stringify(window.APP_DATA.postIts));
+            const color = POSTIT_COLORS[Math.floor(Math.random() * POSTIT_COLORS.length)];
+            window.APP_DATA.postIts.unshift({ id: Date.now().toString(), text: '', color: color, pinned: false });
+            localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts));
             window.renderPostIts();
         };
 
-        window.savePostItText = (id, val) => { const p = window.APP_DATA.postIts.find(x => x.id === id); if(p) { p.text = val; localStorage.setItem('guy_postits_v20', JSON.stringify(window.APP_DATA.postIts)); } };
+        window.savePostItText = (id, val) => { const p = window.APP_DATA.postIts.find(x => x.id === id); if(p) { p.text = val; localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); } };
         window.togglePinPostIt = (id) => { 
             const p = window.APP_DATA.postIts.find(x => x.id === id); 
             if(p) { 
-                if(!p.pinned && window.APP_DATA.postIts.filter(x => x.pinned).length >= 3) { window.showToast("ปักหมุดได้สูงสุด 3 อันครับคุณกาย"); return; }
-                p.pinned = !p.pinned; localStorage.setItem('guy_postits_v20', JSON.stringify(window.APP_DATA.postIts)); renderPostIts(); 
+                if(!p.pinned && window.APP_DATA.postIts.filter(x => x.pinned).length >= 3) { alert("ปักหมุดได้สูงสุด 3 อันครับคุณกาย"); return; }
+                p.pinned = !p.pinned; localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); renderPostIts(); 
+                if(!document.getElementById('view-dashboard').classList.contains('hidden')) updateDashboard();
             } 
         };
-        window.deletePostIt = (id) => { 
-            window.showConfirm("ลบโน้ตใบนี้?", () => {
-                window.APP_DATA.postIts = window.APP_DATA.postIts.filter(x => x.id !== id); 
-                localStorage.setItem('guy_postits_v20', JSON.stringify(window.APP_DATA.postIts)); 
-                window.renderPostIts(); 
-            });
-        };
+        window.deletePostIt = (id) => { if(confirm("ลบโน้ตใบนี้?")) { window.APP_DATA.postIts = window.APP_DATA.postIts.filter(x => x.id !== id); localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); renderPostIts(); } };
 
+        /* STREAMING_CHUNK:Implementing Professional Calendar Bars... */
         window.renderCalendar = () => {
             const grid = document.getElementById('calendar-grid');
             if(!grid) return;
@@ -800,17 +769,20 @@
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-4 text-center text-[10px] font-bold text-slate-400 uppercase border-b border-r border-slate-100">${d}</div>`).join('');
-            for(let i=0; i<firstDay; i++) html += `<div class="bg-slate-50/30 h-32 border-b border-r border-slate-100"></div>`;
+            let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-6 text-center text-[12px] font-bold text-slate-300 uppercase border-b border-r border-slate-100">${d}</div>`).join('');
+            for(let i=0; i<firstDay; i++) html += `<div class="bg-slate-50/30 h-40 border-b border-r border-slate-100"></div>`;
             for(let d=1; d<=daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const dayTasks = window.APP_DATA.tasks.filter(t => t.deadline?.startsWith(dateStr) && t.status !== 'closed' && t.status !== 'completed');
                 html += `
-                    <div onclick="if(${dayTasks.length > 0}){ window.switchView('tasks'); } document.getElementById('filter-date-created').value='${dateStr}'; renderTasks();" 
-                         class="bg-white h-32 p-3 border-b border-r border-slate-100 hover:bg-indigo-50 transition-all cursor-pointer group">
-                        <span class="text-xs font-bold text-slate-400 group-hover:text-indigo-600">${d}</span>
-                        <div class="mt-2 flex flex-wrap gap-1">
-                            ${dayTasks.map(t => `<div class="w-2 h-2 rounded-full ${PRIORITIES[t.priority]?.dot || 'prio-dot-general'} shadow-sm"></div>`).join('')}
+                    <div onclick="if(${dayTasks.length > 0}){ window.switchView('tasks'); document.getElementById('filter-date-created').value='${dateStr}'; renderTasks(); }" 
+                         class="bg-white h-44 p-2 sm:p-4 border-b border-r border-slate-100 hover:bg-indigo-50/50 transition-all cursor-pointer group">
+                        <span class="text-sm font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">${d}</span>
+                        <div class="mt-2 space-y-1.5 overflow-hidden">
+                            ${dayTasks.map(t => {
+                                const p = PRIORITIES[t.priority] || PRIORITIES.general;
+                                return `<div title="${t.title}" class="text-[9px] font-bold ${p.class} px-2 py-1.5 rounded-xl truncate shadow-lg border border-white/20">${t.title}</div>`;
+                            }).join('')}
                         </div>
                     </div>
                 `;
@@ -820,18 +792,18 @@
 
         window.changeMonth = (val) => { window.STATE.calendarDate.setMonth(window.STATE.calendarDate.getMonth() + val); renderCalendar(); };
 
+        /* STREAMING_CHUNK:Diary and Editor Management v25... */
         function initDiary() {
             const years = [...new Set(Object.keys(window.APP_DATA.diaries).map(d => d.split('-')[0]))].sort().reverse();
             document.getElementById('diary-filter-year').innerHTML = (years.length ? years : [new Date().getFullYear()]).map(y => `<option value="${y}">${y}</option>`).join('');
             if(!window.STATE.quill) {
                 window.STATE.quill = new Quill('#journal-editor', {
                     theme: 'snow',
-                    placeholder: 'จดบันทึกประเด็นสำคัญของคุณกาย...',
-                    modules: { toolbar: [['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], ['clean']] }
+                    placeholder: 'จดบันทึกของคุณกายที่นี่...',
+                    modules: { toolbar: [['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], ['link', 'image'], ['clean']] }
                 });
             }
             renderDiaryHistory();
-            previewDiary(window.STATE.selectedDiaryDate);
         }
 
         function renderDiaryHistory() {
@@ -839,92 +811,51 @@
             const month = document.getElementById('diary-filter-month').value;
             const dates = Object.keys(window.APP_DATA.diaries).filter(d => d.startsWith(year) && (month === 'all' || d.split('-')[1] === month)).sort().reverse();
             document.getElementById('diary-history-list').innerHTML = dates.map(d => `
-                <button onclick="previewDiary('${d}')" class="w-full p-4 rounded-2xl text-left text-xs font-bold transition-all ${d === window.STATE.selectedDiaryDate ? 'bg-indigo-50 border-indigo-200' : 'bg-white'} border border-slate-100 shadow-sm mb-1">
+                <button onclick="previewDiary('${d}')" class="w-full p-6 rounded-[2rem] text-left text-xs font-bold transition-all ${d === window.STATE.selectedDiaryDate ? 'bg-indigo-600 text-white shadow-xl' : 'bg-white hover:bg-slate-50'} border border-slate-100">
                     ${new Date(d).toLocaleDateString('th-TH')}
                 </button>
-            `).join('') || '<p class="text-xs text-slate-300 text-center py-4 italic">ไม่พบบันทึก</p>';
+            `).join('') || '<p class="text-xs text-slate-300 text-center py-8 italic font-medium">ไม่พบบันทึก</p>';
         }
 
         window.previewDiary = (ds) => {
             window.STATE.selectedDiaryDate = ds;
-            const data = window.APP_DATA.diaries[ds] || { content: '', images: [], logs: [] };
+            const data = window.APP_DATA.diaries[ds] || { content: '', logs: [] };
             document.getElementById('diary-view-date').innerText = new Date(ds).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
-            document.getElementById('diary-view-content').innerHTML = data.content || '<span class="text-slate-300 italic text-sm font-bold">ไม่มีเนื้อหาบันทึกในวันนี้ครับคุณกาย</span>';
-            document.getElementById('diary-view-images').innerHTML = (data.images || []).map(src => `<img src="${src}" class="h-24 w-24 rounded-2xl object-cover shadow-md border-2 border-white">`).join('');
-            document.getElementById('diary-view-logs').innerHTML = (data.logs || []).map(l => `<span class="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full mr-1">อัปเดต: ${new Date(l).toLocaleTimeString()}</span>`).join('');
+            document.getElementById('diary-view-content').innerHTML = data.content || '<span class="text-slate-300 italic font-bold">ยังไม่มีบันทึกในวันนี้ครับคุณกาย</span>';
             document.getElementById('diary-edit-btn').classList.remove('hidden');
             renderDiaryHistory();
         };
 
-        window.toggleDiaryEdit = (show) => {
-            if(show) {
-                const data = window.APP_DATA.diaries[window.STATE.selectedDiaryDate] || { content: '' };
-                window.STATE.quill.root.innerHTML = data.content;
-                document.getElementById('diary-edit-date-title').innerText = new Date(window.STATE.selectedDiaryDate).toLocaleDateString('th-TH');
-                document.getElementById('diary-editor-overlay').classList.remove('hidden');
-            } else {
-                document.getElementById('diary-editor-overlay').classList.add('hidden');
-            }
-        };
-
-        window.insertEmoji = () => {
-            const emojis = ['❤️', '📅', '🚀', '🔥', '✅', '⚠️', '⭐', '💡', '📌', '📈'];
-            const emoji = prompt("เลือกใส่อิโมจิ: " + emojis.join(' '));
-            if(emoji && window.STATE.quill) {
-                const range = window.STATE.quill.getSelection();
-                if(range) window.STATE.quill.insertText(range.index, emoji);
-            }
-        };
-
-        window.handleDiaryImage = (input) => {
-            if(input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const range = window.STATE.quill.getSelection();
-                    if(range) window.STATE.quill.insertEmbed(range.index, 'image', e.target.result);
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        };
-
         window.saveDiary = () => {
             const ds = window.STATE.selectedDiaryDate;
-            if(!window.APP_DATA.diaries[ds]) window.APP_DATA.diaries[ds] = { content: '', images: [], logs: [] };
+            if(!window.APP_DATA.diaries[ds]) window.APP_DATA.diaries[ds] = { content: '', logs: [] };
             window.APP_DATA.diaries[ds].content = window.STATE.quill.root.innerHTML;
             if(!window.APP_DATA.diaries[ds].logs) window.APP_DATA.diaries[ds].logs = [];
             window.APP_DATA.diaries[ds].logs.unshift(new Date().toISOString());
-            localStorage.setItem('guy_diaries_v20', JSON.stringify(window.APP_DATA.diaries));
-            window.toggleDiaryEdit(false);
-            window.previewDiary(ds);
-            window.showToast("บันทึกสมุดรายวันแล้ว");
+            localStorage.setItem('guy_v25_diaries', JSON.stringify(window.APP_DATA.diaries));
+            toggleDiaryEdit(false);
+            previewDiary(ds);
+            alert("บันทึกข้อมูลเรียบร้อยครับคุณกาย");
         };
 
+        window.insertEmoji = () => {
+            const emoji = prompt("ใส่อิโมจิที่คุณต้องการ (เช่น ❤️ 🚀 ✅):");
+            if(emoji && window.STATE.quill) {
+                const range = window.STATE.quill.getSelection(true);
+                window.STATE.quill.insertText(range.index, emoji);
+            }
+        };
+
+        /* STREAMING_CHUNK:Settings and App Launch... */
         function initSettings() {
             document.getElementById('set-morning').value = window.APP_DATA.settings.morningTime;
             document.getElementById('set-afternoon').value = window.APP_DATA.settings.afternoonTime;
-            document.getElementById('set-desktop').checked = window.APP_DATA.settings.desktopNotify;
-            ['monday','tuesday','wednesday','thursday','friday','saturday'].forEach(d => {
-                const btn = document.getElementById(`day-${d}`);
-                if(btn) {
-                    if(window.APP_DATA.settings.notifyDays.includes(d)) btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
-                    else btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600');
-                }
-            });
         }
-
-        window.toggleDay = (day) => {
-            if(window.APP_DATA.settings.notifyDays.includes(day)) window.APP_DATA.settings.notifyDays = window.APP_DATA.settings.notifyDays.filter(d => d !== day);
-            else window.APP_DATA.settings.notifyDays.push(day);
-            localStorage.setItem('guy_settings_v20', JSON.stringify(window.APP_DATA.settings));
-            initSettings();
-        };
 
         window.saveSettings = () => {
             window.APP_DATA.settings.morningTime = document.getElementById('set-morning').value;
             window.APP_DATA.settings.afternoonTime = document.getElementById('set-afternoon').value;
-            window.APP_DATA.settings.desktopNotify = document.getElementById('set-desktop').checked;
-            localStorage.setItem('guy_settings_v20', JSON.stringify(window.APP_DATA.settings));
-            window.showToast("บันทึกการตั้งค่าแล้ว");
+            localStorage.setItem('guy_v25_settings', JSON.stringify(window.APP_DATA.settings));
         };
 
         window.updateNotifBell = () => {
@@ -944,38 +875,44 @@
             const bellList = document.getElementById('bell-list');
             if(bellList) {
                 bellList.innerHTML = alerts.map(t => `
-                    <div onclick="openTaskModal('${t.id}')" class="p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-white border border-slate-100 transition-all mb-2 shadow-sm">
-                        <p class="text-xs font-bold text-slate-800">${t.title}</p>
-                        <span class="text-[8px] font-bold uppercase tracking-widest text-rose-500">${t.priority.toUpperCase()} Alert</span>
+                    <div onclick="openTaskModal('${t.id}')" class="p-5 bg-slate-50 rounded-[2.5rem] cursor-pointer hover:bg-white border border-slate-100 transition-all shadow-sm">
+                        <p class="text-sm font-bold text-slate-800 line-clamp-1 uppercase tracking-tighter">${t.title}</p>
+                        <span class="text-[9px] font-bold uppercase tracking-widest text-rose-500">${t.priority.toUpperCase()} Alert</span>
                     </div>
-                `).join('') || '<p class="text-xs text-slate-400 text-center py-4">ไม่มีรายการเร่งด่วนครับ</p>';
+                `).join('') || '<p class="text-xs text-slate-400 text-center py-6 font-bold uppercase italic opacity-40">ไม่มีรายการเร่งด่วนครับ</p>';
             }
         }
-
-        window.exportTasks = (type) => {
-            let list = (type === 'finished') ? window.APP_DATA.tasks.filter(t => t.status === 'completed' || t.status === 'closed') : window.APP_DATA.tasks.filter(t => t.status !== 'completed' && t.status !== 'closed');
-            const headers = ["หัวข้อ", "หมวดหมู่", "ความสำคัญ", "สถานะ", "Deadline", "หมายเหตุ"];
-            const csv = "\uFEFF" + [headers, ...list.map(t => [t.title, t.category, PRIORITIES[t.priority]?.label, t.status, t.deadline, t.notes])].map(r => r.join(",")).join("\n");
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `Report_Guy_${type}_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
-        };
 
         function initApp() {
             const filterCat = document.getElementById('filter-cat');
             if(filterCat) filterCat.innerHTML = '<option value="all">ทุกหมวดหมู่</option>' + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-            
-            if(!window.APP_DATA.user) {
-                document.getElementById('login-overlay').classList.remove('hidden');
-            } else {
-                window.switchView('dashboard');
-            }
+            if(!window.APP_DATA.user) document.getElementById('login-overlay').classList.remove('hidden');
+            else window.switchView('dashboard');
             refreshIcons();
         }
 
         window.onload = initApp;
     </script>
+
+    <!-- STREAMING_CHUNK:Emoji Picker Overlay (Hidden) -->
+    <div id="emoji-modal" class="fixed inset-0 z-[1500] bg-black/30 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass p-6 rounded-[2.5rem] shadow-2xl w-full max-w-xs text-center">
+            <h4 class="font-bold mb-6 text-sm text-slate-400 uppercase tracking-widest">เลือกอิโมจิ</h4>
+            <div class="grid grid-cols-5 gap-3">
+                <button onclick="pickEmoji('❤️')" class="text-3xl hover:scale-125 transition-transform">❤️</button>
+                <button onclick="pickEmoji('📅')" class="text-3xl hover:scale-125 transition-transform">📅</button>
+                <button onclick="pickEmoji('🚀')" class="text-3xl hover:scale-125 transition-transform">🚀</button>
+                <button onclick="pickEmoji('🔥')" class="text-3xl hover:scale-125 transition-transform">🔥</button>
+                <button onclick="pickEmoji('✅')" class="text-3xl hover:scale-125 transition-transform">✅</button>
+                <button onclick="pickEmoji('⚠️')" class="text-3xl hover:scale-125 transition-transform">⚠️</button>
+                <button onclick="pickEmoji('⭐')" class="text-3xl hover:scale-125 transition-transform">⭐</button>
+                <button onclick="pickEmoji('💡')" class="text-3xl hover:scale-125 transition-transform">💡</button>
+                <button onclick="pickEmoji('📌')" class="text-3xl hover:scale-125 transition-transform">📌</button>
+                <button onclick="pickEmoji('📈')" class="text-3xl hover:scale-125 transition-transform">📈</button>
+            </div>
+            <button onclick="document.getElementById('emoji-modal').classList.add('hidden')" class="mt-8 text-xs text-slate-400 font-bold uppercase underline">ปิด</button>
+        </div>
+    </div>
+
 </body>
 </html>
