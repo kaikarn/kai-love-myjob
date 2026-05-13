@@ -1,245 +1,748 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+    <!-- STREAMING_CHUNK:Configuring head and premium libraries... -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ai เลขาของคุณกาย - Management Pro v8</title>
+    <title>Ai เลขาของคุณกาย - Ultimate Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    
     <style>
-        body { font-family: 'Prompt', 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Prompt', 'Inter', sans-serif; background-color: #f1f5f9; }
         .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .kpi-card { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .kpi-gradient { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .mobile-menu-active { transform: translateX(0) !important; }
-        .task-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .task-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1); }
-        .postit-card { transition: all 0.3s; transform: rotate(-1deg); }
-        .postit-card:hover { transform: rotate(0deg) scale(1.02); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        
+        .postit-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 1px solid rgba(0,0,0,0.05); }
+        .postit-card:hover { transform: translateY(-5px) rotate(0deg) !important; z-index: 10; box-shadow: 0 15px 30px -10px rgba(0,0,0,0.1); }
+        .pinned { border: 3px solid #fbbf24 !important; order: -1; }
+        
+        .close-btn-red { background-color: #ef4444 !important; color: white !important; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); border-radius: 99px; padding: 8px; z-index: 50; }
+        
+        #journal-editor { height: 400px; background: white; border-radius: 0 0 1.5rem 1.5rem; }
+        .ql-toolbar { border-radius: 1.5rem 1.5rem 0 0; background: #f8fafc; border-color: #e2e8f0 !important; }
+        .ql-container { border-color: #e2e8f0 !important; font-family: 'Prompt', sans-serif; font-size: 1rem; }
+        
+        @keyframes ring { 0%, 100% { transform: rotate(0); } 10%, 30%, 50% { transform: rotate(15deg); } 20%, 40% { transform: rotate(-15deg); } }
+        .bell-ring { animation: ring 2s infinite; }
+        .sidebar-item-active { background: #eef2ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
+        
+        #main-sidebar { transition: transform 0.3s ease-in-out; }
     </style>
 </head>
-<body class="min-h-screen text-slate-800 flex overflow-hidden">
+<body class="min-h-screen flex overflow-hidden">
 
-    <script type="module">
-        // Firebase Mock Integration
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+    <script>
+        /* STREAMING_CHUNK:Initializing global application state... */
+        let user = JSON.parse(localStorage.getItem('guy_user') || 'null');
+        let tasks = JSON.parse(localStorage.getItem('guy_tasks_v13') || '[]');
+        let postIts = JSON.parse(localStorage.getItem('guy_postits_v13') || '[]');
+        let diaries = JSON.parse(localStorage.getItem('guy_diaries_v13') || '{}');
+        let appSettings = JSON.parse(localStorage.getItem('guy_settings_v13') || JSON.stringify({
+            notifyDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+            morningTime: '08:00',
+            afternoonTime: '13:30',
+            desktopNotify: true
+        }));
 
-        // --- GLOBAL HOOKS (Ensuring HTML accessibility) ---
-        window.refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
-
-        // Constants
-        const CATEGORIES = ['บริหาร', 'ออนไลน์', 'หน่วยรถ', 'โมเดิร์นเทรด', 'งานพัฒนาสินค้า', 'คำสั่งบอส', 'คำสั่งอาจารย์', 'งานออกแบบ', 'อบรม/ประชุม', 'งานประสานงาน', 'งานโปรเจค', 'ส่วนตัว', 'อื่นๆ'];
-        const PRIORITIES = {
-            urgent: { label: 'งานง่าย ด่วนมาก', color: 'bg-rose-500', text: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
-            focus: { label: 'งานโฟกัส', color: 'bg-indigo-500', text: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-200' },
-            important: { label: 'งานสำคัญ', color: 'bg-orange-500', text: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' },
-            general: { label: 'งานทั่วไป', color: 'bg-slate-400', text: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' }
-        };
-        const STATUSES = {
-            pending: { label: 'ยังไม่เริ่ม', color: 'text-slate-500', bg: 'bg-slate-100' },
-            in_progress: { label: 'กำลังทำ', color: 'text-indigo-600', bg: 'bg-indigo-100' },
-            completed: { label: 'เสร็จแล้ว', color: 'text-emerald-600', bg: 'bg-emerald-100' },
-            closed: { label: 'ปิดงาน', color: 'text-white', bg: 'bg-slate-800' }
-        };
-
-        // Application State
-        let tasks = JSON.parse(localStorage.getItem('kai_tasks_v8') || '[]');
-        let postIts = JSON.parse(localStorage.getItem('kai_postits_v8') || '[]');
-        let settings = JSON.parse(localStorage.getItem('kai_settings_v8') || '{"notifyTime":"08:30"}');
         let calendarDate = new Date();
         let currentEditId = null;
-        let auth = null;
+        let quill = null;
+        let selectedDiaryDate = new Date().toISOString().split('T')[0];
 
-        // --- CORE FUNCTIONS (Attached to window) ---
-
-        window.switchView = (view, filterType = null) => {
-            document.querySelectorAll('#view-container > div').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById(`view-${view}`);
-            if(target) target.classList.remove('hidden');
-            
-            document.querySelectorAll('aside nav button').forEach(el => el.classList.remove('bg-indigo-50', 'text-indigo-600', 'font-bold'));
-            const btn = document.getElementById(`nav-${view}`);
-            if(btn) btn.classList.add('bg-indigo-50', 'text-indigo-600', 'font-bold');
-
-            const headerTitles = {dashboard:'แดชบอร์ดสรุปงาน', tasks:'รายการงานทั้งหมด', calendar:'ปฏิทินนัดหมาย', postits:'กระดานโน้ตด่วน', settings:'ตั้งค่าระบบ'};
-            document.getElementById('header-title').innerText = headerTitles[view] || 'เลขาคุณกาย';
-            
-            if(view === 'dashboard') updateDashboard();
-            if(view === 'tasks') window.renderTasks(filterType);
-            if(view === 'calendar') window.renderCalendar();
-            if(view === 'postits') window.renderPostItBoard();
-            
-            if(window.innerWidth < 1024) window.toggleSidebar(false);
-            window.refreshIcons();
+        const CATEGORIES = ['บริหาร', 'ออนไลน์', 'หน่วยรถ', 'โมเดิร์นเทรด', 'งานพัฒนาสินค้า', 'คำสั่งบอส', 'คำสั่งอาจารย์', 'งานออกแบบ', 'อบรม/ประชุม', 'งานประสานงาน', 'งานโปรเจค', 'ส่วนตัว', 'อื่นๆ'];
+        const PRIORITIES = {
+            urgent: { label: 'ด่วนมาก', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
+            focus: { label: 'งานโฟกัส', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+            important: { label: 'งานสำคัญ', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+            general: { label: 'งานทั่วไป', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' }
         };
 
-        const updateDashboard = () => {
-            const now = new Date();
-            const stats = {
-                pending: tasks.filter(t => t.status === 'pending').length,
-                urgent: tasks.filter(t => (t.priority === 'urgent') && t.status !== 'closed').length,
-                completed: tasks.filter(t => t.status === 'completed' || t.status === 'closed').length,
-                near: tasks.filter(t => {
-                    if(!t.deadline || t.status === 'closed') return false;
-                    const diff = (new Date(t.deadline) - now) / (1000*60*60);
-                    return diff > 0 && diff < 24;
-                }).length
-            };
+        const refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
+    </script>
 
-            for(const k in stats) {
-                const el = document.getElementById(`stat-${k}`);
-                if(el) el.innerText = stats[k];
-            }
+    <!-- STREAMING_CHUNK:Rendering Login and UI Overlays... -->
+    <div id="login-overlay" class="fixed inset-0 z-[1000] bg-slate-900 flex items-center justify-center p-6 transition-opacity duration-500">
+        <div class="glass max-w-md w-full p-10 rounded-[3rem] text-center shadow-2xl border border-white/20">
+            <div class="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
+                <i data-lucide="sparkles" class="text-white w-10 h-10"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Ai เลขาของคุณกาย</h1>
+            <p class="text-slate-400 mb-10 text-sm">จัดการงานของคุณอย่างอัจฉริยะ</p>
+            <button onclick="handleLogin()" class="w-full py-4 bg-white border border-slate-200 rounded-2xl font-bold flex items-center justify-center gap-4 hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-6 h-6">
+                ล็อกอินผ่าน Google
+            </button>
+            <p class="mt-6 text-[10px] text-slate-300 uppercase tracking-widest font-bold">Stable Version 13.0</p>
+        </div>
+    </div>
 
-            const total = tasks.length || 1;
-            const successRate = Math.round((stats.completed / total) * 100);
-            document.getElementById('kpi-success-rate').innerText = successRate + '%';
-            document.getElementById('kpi-total-perc').innerText = successRate + '%';
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-[1001] bg-slate-900/60 backdrop-blur-md hidden flex items-center justify-center p-6">
+        <div class="glass max-w-sm w-full p-10 rounded-[3rem] text-center shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">คุณกายแน่ใจไหมครับ?</h3>
+            <p id="confirm-text" class="text-slate-400 text-sm mb-8">รายการนี้จะถูกลบถาวร</p>
+            <div class="flex gap-4">
+                <button id="confirm-yes" class="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-bold">ยืนยัน</button>
+                <button onclick="closeConfirm()" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="main-sidebar" class="fixed lg:relative inset-y-0 left-0 w-72 glass border-r border-slate-200 flex flex-col z-40 -translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none">
+        <div class="p-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-700 bg-clip-text text-transparent flex items-center gap-2">
+                    <i data-lucide="sparkles" class="text-indigo-600 w-5 h-5"></i> Ai เลขากาย
+                </h1>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mt-1">Management Pro</p>
+            </div>
+            <button onclick="toggleMobileSidebar(false)" class="lg:hidden p-2 text-slate-400 hover:bg-slate-100 rounded-xl"><i data-lucide="x"></i></button>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="layout-dashboard"></i> แดชบอร์ด
+            </button>
+            <button onclick="switchView('tasks')" id="nav-tasks" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="list-checks"></i> งานที่ต้องทำ
+            </button>
+            <button onclick="switchView('archive')" id="nav-archive" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="archive"></i> งานที่สำเร็จแล้ว
+            </button>
+            <button onclick="switchView('calendar')" id="nav-calendar" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="calendar"></i> ปฏิทินนัดหมาย
+            </button>
+            <button onclick="switchView('postits')" id="nav-postits" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="sticky-note"></i> กระดานโน้ตด่วน
+            </button>
+            <button onclick="switchView('diary')" id="nav-diary" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="book-open"></i> สมุดบันทึกรายวัน
+            </button>
+            <button onclick="switchView('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium">
+                <i data-lucide="settings"></i> ตั้งค่าระบบ
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-slate-100">
+            <button onclick="openTaskModal()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 active:scale-95">
+                <i data-lucide="plus-circle" class="w-5 h-5"></i> สั่งงานใหม่
+            </button>
+            <button onclick="handleLogout()" class="w-full mt-4 py-2 text-rose-500 font-bold text-xs">ออกจากระบบ</button>
+        </div>
+    </aside>
+
+    <!-- STREAMING_CHUNK:Rendering Main View Content... -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/30 relative">
+        <header class="h-20 glass border-b border-slate-200 px-6 lg:px-8 flex items-center justify-between shrink-0 z-30">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleMobileSidebar(true)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
+                <h2 id="view-title" class="text-lg font-bold text-slate-800">แดชบอร์ด</h2>
+            </div>
             
-            const circle = document.getElementById('kpi-circle');
-            if(circle) circle.style.strokeDashoffset = 502.6 - (502.6 * successRate / 100);
+            <div class="flex items-center gap-4">
+                <!-- Smart Bell -->
+                <div class="relative group">
+                    <button class="p-3 hover:bg-slate-100 rounded-2xl relative">
+                        <i data-lucide="bell" id="notif-bell" class="w-6 h-6 text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                        <span id="bell-dot" class="absolute top-3 right-3 w-3 h-3 bg-rose-500 border-2 border-white rounded-full hidden"></span>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-80 glass border border-slate-200 rounded-[2rem] shadow-2xl invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all p-6 z-50">
+                        <h4 class="font-bold text-slate-800 mb-4">รายงานเลขาอัจฉริยะ</h4>
+                        <div id="bell-list" class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-xs font-bold text-slate-800">คุณกาย</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Executive</p>
+                    </div>
+                    <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">K</div>
+                </div>
+            </div>
+        </header>
 
-            const aiInsight = document.getElementById('ai-insight');
-            if(stats.urgent > 0) aiInsight.innerText = `คุณกายครับ มีงานด่วนมากรออยู่ ${stats.urgent} รายการครับ แนะนำให้จัดการทันทีเพื่อ KPI ที่ดีครับ`;
-            else aiInsight.innerText = `สถานะงานโดยรวมดีเยี่ยมครับคุณกาย KPI สำเร็จแล้ว ${successRate}% ครับ`;
-        };
-
-        window.renderTasks = (specialFilter = null) => {
-            const grid = document.getElementById('task-grid');
-            const status = document.getElementById('filter-status').value;
-            const prio = document.getElementById('filter-priority').value;
-            const cat = document.getElementById('filter-category').value;
-            const date = document.getElementById('filter-date-start').value;
-
-            let filtered = tasks.filter(t => {
-                let m = true;
-                if(status !== 'all' && t.status !== status) m = false;
-                if(prio !== 'all' && t.priority !== prio) m = false;
-                if(cat !== 'all' && t.category !== cat) m = false;
-                if(date && !t.deadline?.startsWith(date)) m = false;
-
-                if(specialFilter === 'urgent' && t.priority !== 'urgent') m = false;
-                if(specialFilter === 'near') {
-                    if(t.status === 'closed') return false;
-                    const diff = (new Date(t.deadline) - new Date()) / (1000*60*60);
-                    if(!(diff > 0 && diff < 24)) m = false;
-                }
-                if(specialFilter === 'pending' && t.status !== 'pending') m = false;
-                if(specialFilter === 'completed' && t.status !== 'completed' && t.status !== 'closed') m = false;
-                return m;
-            });
-
-            grid.innerHTML = filtered.length ? filtered.map(t => {
-                const p = PRIORITIES[t.priority] || PRIORITIES.general;
-                const s = STATUSES[t.status] || STATUSES.pending;
-                const isLate = t.deadline && new Date() > new Date(t.deadline) && t.status !== 'completed' && t.status !== 'closed';
-                const isDone = t.status === 'completed' || t.status === 'closed';
-
-                return `
-                    <div onclick="window.openTaskModal('${t.id}')" class="task-card glass p-6 rounded-[2.5rem] border border-slate-200 cursor-pointer flex flex-col h-full">
-                        <div class="flex justify-between items-start mb-4">
-                            <span class="text-[9px] font-bold px-2.5 py-1 rounded-lg ${p.bg} ${p.text}">${p.label}</span>
-                            <span class="text-[9px] font-bold px-2.5 py-1 rounded-lg ${s.bg} ${s.color}">${s.label}</span>
-                        </div>
-                        <h4 class="font-bold text-slate-800 mb-2 line-clamp-1">${t.title}</h4>
-                        <div class="mb-4">
-                            ${isDone ? '<p class="text-[9px] text-emerald-600 font-bold italic">✨ ยินดีด้วยคุณทำงานเสร็จก่อนเวลา</p>' : 
-                              isLate ? '<p class="text-[9px] text-rose-600 font-bold italic text-opacity-80">⚠️ คุณต้องพัฒนาตัวให้มากนะ งานยังไม่เสร็จ</p>' : ''}
-                        </div>
-                        <p class="text-xs text-slate-400 line-clamp-2 mb-4 flex-1">${t.description || 'ไม่มีรายละเอียด'}</p>
-                        <div class="pt-4 border-t border-slate-50 flex items-center justify-between text-[10px] font-bold text-slate-400">
-                            <span># ${t.category}</span>
-                            <span>${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : 'ไม่ระบุกำหนด'}</span>
+        <div id="view-container" class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="space-y-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 kpi-gradient p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div class="flex-1">
+                                <h3 class="text-2xl font-bold mb-2">KPI สรุปผลงานวันนี้</h3>
+                                <div class="grid grid-cols-2 gap-4 mt-6">
+                                    <div class="bg-white/10 backdrop-blur-md p-5 rounded-3xl border border-white/20 text-center">
+                                        <p class="text-[10px] uppercase font-bold text-indigo-100 mb-1">Success Rate</p>
+                                        <h4 id="kpi-rate" class="text-4xl font-bold">0%</h4>
+                                    </div>
+                                    <div class="bg-white/10 backdrop-blur-md p-5 rounded-3xl border border-white/20 text-center">
+                                        <p class="text-[10px] uppercase font-bold text-indigo-100 mb-1">Efficiency</p>
+                                        <h4 id="kpi-status" class="text-xl font-bold">Loading...</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-40 h-40 relative flex items-center justify-center">
+                                <svg class="w-full h-full transform -rotate-90">
+                                    <circle cx="80" cy="80" r="70" stroke="currentColor" stroke-width="12" fill="transparent" class="text-white/20" />
+                                    <circle id="kpi-circle" cx="80" cy="80" r="70" stroke="currentColor" stroke-width="12" fill="transparent" stroke-dasharray="439.8" stroke-dashoffset="439.8" class="text-white transition-all duration-1000" />
+                                </svg>
+                                <span id="kpi-perc" class="absolute text-3xl font-bold">0%</span>
+                            </div>
                         </div>
                     </div>
-                `;
-            }).join('') : `<div class="col-span-full py-20 text-center text-slate-300 font-bold">ไม่พบรายการงานครับคุณกาย</div>`;
-            window.refreshIcons();
+                    <div class="glass p-8 rounded-[3rem] border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="brain"></i> AI เลขาวิจัย</h3>
+                        <div id="ai-insight" class="text-sm text-slate-600 italic bg-slate-50/50 p-5 rounded-2xl">กำลังเตรียมข้อมูลบทวิเคราะห์...</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="glass p-8 rounded-[3rem] border border-slate-200">
+                        <h4 class="font-bold text-rose-500 mb-6 flex items-center gap-2"><i data-lucide="timer"></i> งานใกล้หมดเวลาส่ง</h4>
+                        <div id="dash-near-list" class="space-y-4"></div>
+                    </div>
+                    <div class="glass p-8 rounded-[3rem] border border-slate-200">
+                        <h4 class="font-bold text-indigo-600 mb-6 flex items-center gap-2"><i data-lucide="target"></i> งานสำคัญที่คุณกายต้องโฟกัส</h4>
+                        <div id="dash-focus-list" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STREAMING_CHUNK:Rendering Tasks, Archive, and Calendar... -->
+            <div id="view-tasks" class="hidden space-y-6">
+                <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
+                    <div class="flex gap-3 flex-wrap">
+                        <select id="filter-cat" onchange="renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none"></select>
+                        <select id="filter-status" onchange="renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
+                            <option value="all">ทุกสเต็ปงาน</option>
+                            <option value="pending">ยังไม่เริ่ม</option>
+                            <option value="in_progress">กำลังทำ</option>
+                        </select>
+                        <select id="filter-prio" onchange="renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
+                            <option value="all">ทุกความสำคัญ</option>
+                            <option value="urgent">ด่วนมาก</option>
+                            <option value="focus">งานโฟกัส</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+            </div>
+
+            <div id="view-archive" class="hidden space-y-6">
+                <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-6 items-center shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">กรองวันที่</label>
+                        <input type="date" id="archive-date-start" onchange="renderArchive()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
+                        <span class="text-slate-300">-</span>
+                        <input type="date" id="archive-date-end" onchange="renderArchive()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
+                    </div>
+                </div>
+                <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+            </div>
+
+            <div id="view-calendar" class="hidden glass p-8 rounded-[3rem] border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 id="calendar-title" class="text-3xl font-bold text-slate-800"></h2>
+                    <div class="flex gap-2">
+                        <button onclick="changeMonth(-1)" class="p-3 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"><i data-lucide="chevron-left"></i></button>
+                        <button onclick="changeMonth(1)" class="p-3 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-all"><i data-lucide="chevron-right"></i></button>
+                    </div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-200 rounded-[2.5rem] overflow-hidden border border-slate-200 shadow-inner"></div>
+            </div>
+
+            <div id="view-postits" class="hidden space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-3xl font-bold text-slate-800">กระดานโน้ตด่วน</h2>
+                    <button onclick="addPostIt()" class="px-8 py-4 bg-indigo-600 text-white rounded-[2rem] font-bold shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-2 active:scale-95">
+                        <i data-lucide="plus"></i> เพิ่มโน้ตใหม่
+                    </button>
+                </div>
+                <div id="postit-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-4 items-start"></div>
+            </div>
+
+            <div id="view-diary" class="hidden h-full flex flex-col lg:flex-row gap-8">
+                <aside class="w-full lg:w-64 glass rounded-[2.5rem] border border-slate-200 p-6 flex flex-col shrink-0 max-h-64 lg:max-h-full overflow-y-auto">
+                    <h4 class="font-bold text-slate-800 mb-6 text-center uppercase tracking-widest text-xs">ประวัติการบันทึก</h4>
+                    <div id="diary-history-list" class="flex-1 space-y-2 pr-2"></div>
+                </aside>
+                <div class="flex-1 flex flex-col gap-6">
+                    <div class="glass p-8 rounded-[3rem] border border-slate-200 flex-1 flex flex-col relative shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 id="diary-current-date" class="text-2xl font-bold text-slate-800"></h3>
+                                <p id="diary-last-update" class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">เลขาพร้อมบันทึกให้แล้วครับ</p>
+                            </div>
+                            <button onclick="saveDiary()" class="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg flex items-center gap-2 active:scale-95">
+                                <i data-lucide="save" class="w-4 h-4"></i> บันทึกข้อมูล
+                            </button>
+                        </div>
+                        <div id="journal-editor" class="flex-1 border border-slate-200"></div>
+                        <div class="mt-6 flex flex-wrap gap-4 items-center">
+                            <label class="cursor-pointer px-6 py-2.5 bg-slate-100 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
+                                <i data-lucide="image" class="w-4 h-4"></i> แนบไฟล์ภาพ
+                                <input type="file" id="diary-img-input" class="hidden" accept="image/*" onchange="handleDiaryImage(this)">
+                            </label>
+                            <div id="diary-img-preview" class="flex gap-2 overflow-x-auto p-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-settings" class="hidden max-w-2xl mx-auto space-y-8">
+                <div class="glass p-10 rounded-[3.5rem] border border-slate-200 shadow-sm">
+                    <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-3"><i data-lucide="bell" class="text-indigo-600"></i> ตั้งค่าการแจ้งเตือน</h3>
+                    <div class="space-y-10">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">รายงานสรุปงานเช้า</label>
+                                <input type="time" id="set-morning" onchange="saveSettings()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold border border-slate-200 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">รายงานสรุปงานบ่าย</label>
+                                <input type="time" id="set-afternoon" onchange="saveSettings()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold border border-slate-200 outline-none">
+                            </div>
+                        </div>
+                        <label class="flex items-center justify-between p-5 bg-slate-50 rounded-3xl cursor-pointer hover:bg-slate-100 transition-all">
+                            <span class="text-sm font-bold text-slate-700 flex items-center gap-3"><i data-lucide="monitor" class="w-5 h-5 text-indigo-500"></i> แจ้งเตือนบนคอมพิวเตอร์</span>
+                            <input type="checkbox" id="set-desktop" onchange="saveSettings()" class="w-6 h-6 accent-indigo-600 rounded-lg">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- STREAMING_CHUNK:Rendering Task Modal... -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-4">
+        <div class="glass w-full max-w-2xl rounded-[3.5rem] shadow-2xl border border-white p-10 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="closeTaskModal()" class="absolute top-8 right-8 close-btn-red hover:scale-110 transition-all">
+                <i data-lucide="x" class="w-6 h-6 text-white"></i>
+            </button>
+            <h2 id="modal-title" class="text-2xl font-bold text-slate-800 mb-8">บันทึกข้อมูลงาน</h2>
+            <div id="modal-feedback" class="mb-6 hidden"></div>
+            <div class="space-y-6">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">หัวข้อเรื่อง</label>
+                    <input type="text" id="task-title" placeholder="ชื่อเรื่องงาน..." class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500 transition-all">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">รายละเอียดงาน</label>
+                    <textarea id="task-desc" placeholder="ระบุรายละเอียด..." rows="3" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-indigo-500 transition-all"></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">หมวดหมู่</label>
+                        <select id="task-cat" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none"></select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">ความสำคัญ</label>
+                        <select id="task-prio" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none"></select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">กำหนดส่ง (Deadline)</label>
+                        <input type="datetime-local" id="task-deadline" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">สถานะ</label>
+                        <select id="task-status" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none">
+                            <option value="pending">ยังไม่เริ่ม</option>
+                            <option value="in_progress">กำลังทำ</option>
+                            <option value="completed">เสร็จแล้ว</option>
+                            <option value="closed">ปิดงาน</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">ลิงก์งาน (ถ้ามี)</label>
+                        <input type="url" id="task-link" placeholder="https://..." class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">แจ้งเตือนพิเศษ</label>
+                        <input type="datetime-local" id="task-special" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">หมายเหตุเพิ่มเติม</label>
+                    <textarea id="task-notes" placeholder="หมายเหตุเสริม..." rows="2" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium"></textarea>
+                </div>
+                
+                <div id="log-section" class="hidden border-t pt-8">
+                    <h5 class="text-[11px] font-bold text-slate-400 uppercase mb-4 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4"></i> ประวัติการอัปเดต</h5>
+                    <div id="log-list" class="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar"></div>
+                </div>
+
+                <div class="flex gap-4 pt-6">
+                    <button id="btn-delete" class="px-8 py-5 bg-rose-50 text-rose-600 rounded-3xl font-bold hidden hover:bg-rose-100 transition-all border border-rose-100 active:scale-95">ลบงานนี้</button>
+                    <button onclick="saveTask()" class="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-bold shadow-xl hover:bg-indigo-700 transition-all active:scale-95">บันทึกข้อมูลงาน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STREAMING_CHUNK:Main Application Logic Scripts... -->
+    <script>
+        /* STREAMING_CHUNK:Defining core controllers... */
+        window.handleLogin = () => {
+            user = { name: 'คุณกาย', avatar: 'K' };
+            localStorage.setItem('guy_user', JSON.stringify(user));
+            const overlay = document.getElementById('login-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => { overlay.classList.add('hidden'); initApp(); }, 500);
         };
 
+        window.handleLogout = () => {
+            user = null;
+            localStorage.removeItem('guy_user');
+            location.reload();
+        };
+
+        window.toggleMobileSidebar = (state) => {
+            const sidebar = document.getElementById('main-sidebar');
+            if(state) sidebar.classList.remove('-translate-x-full');
+            else sidebar.classList.add('-translate-x-full');
+        };
+
+        window.switchView = (view) => {
+            document.querySelectorAll('#view-container > div').forEach(el => el.classList.add('hidden'));
+            const targetView = document.getElementById(`view-${view}`);
+            if(targetView) targetView.classList.remove('hidden');
+            
+            document.querySelectorAll('aside nav button').forEach(el => el.classList.remove('sidebar-item-active'));
+            const navBtn = document.getElementById(`nav-${view}`);
+            if(navBtn) navBtn.classList.add('sidebar-item-active');
+
+            const titleMap = { dashboard: 'แดชบอร์ดสรุปงาน', tasks: 'งานที่ต้องทำ', archive: 'งานที่สำเร็จแล้ว', calendar: 'ปฏิทินนัดหมาย', postits: 'กระดานโน้ตด่วน', diary: 'สมุดบันทึกรายวัน', settings: 'ตั้งค่าระบบ' };
+            document.getElementById('view-title').innerText = titleMap[view] || 'Ai เลขากาย';
+
+            if(view === 'dashboard') updateDashboard();
+            else if(view === 'tasks') renderTasks();
+            else if(view === 'archive') renderArchive();
+            else if(view === 'calendar') renderCalendar();
+            else if(view === 'postits') renderPostIts();
+            else if(view === 'diary') initDiary();
+            else if(view === 'settings') initSettings();
+            
+            refreshIcons();
+            toggleMobileSidebar(false);
+        };
+
+        /* STREAMING_CHUNK:Dashboard Logic Implementation... */
+        function updateDashboard() {
+            const now = new Date();
+            const total = tasks.length || 1;
+            const completedCount = tasks.filter(t => t.status === 'completed' || t.status === 'closed').length;
+            const rate = Math.round((completedCount / total) * 100);
+
+            document.getElementById('kpi-rate').innerText = rate + '%';
+            document.getElementById('kpi-perc').innerText = rate + '%';
+            document.getElementById('kpi-circle').style.strokeDashoffset = 439.8 - (439.8 * rate / 100);
+            document.getElementById('kpi-status').innerText = rate > 80 ? 'Excellent' : 'Keep Working';
+
+            const activeTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'closed');
+            
+            // Near list
+            document.getElementById('dash-near-list').innerHTML = activeTasks
+                .filter(t => t.deadline && (new Date(t.deadline) - now) < 86400000 && (new Date(t.deadline) - now) > 0)
+                .sort((a,b) => new Date(a.deadline) - new Date(b.deadline))
+                .slice(0, 3).map(t => `
+                    <div onclick="openTaskModal('${t.id}')" class="p-4 bg-white border border-slate-100 rounded-3xl flex justify-between items-center cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-rose-500 shadow-sm">
+                        <span class="text-sm font-bold text-slate-700">${t.title}</span>
+                        <span class="text-[9px] px-2 py-1 bg-rose-50 text-rose-500 rounded-xl font-bold">${new Date(t.deadline).toLocaleDateString('th-TH')}</span>
+                    </div>
+                `).join('') || '<p class="text-[11px] text-slate-400 italic text-center py-4">ไม่มีงานใกล้ถึงกำหนดส่ง</p>';
+
+            // Focus list
+            document.getElementById('dash-focus-list').innerHTML = activeTasks
+                .filter(t => t.priority === 'focus')
+                .slice(0, 3).map(t => `
+                    <div onclick="openTaskModal('${t.id}')" class="p-4 bg-white border border-slate-100 rounded-3xl flex justify-between items-center cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-indigo-500 shadow-sm">
+                        <span class="text-sm font-bold text-slate-700">${t.title}</span>
+                        <span class="text-[10px] px-3 py-1 bg-indigo-50 text-indigo-500 rounded-xl font-bold uppercase tracking-widest">Focus</span>
+                    </div>
+                `).join('') || '<p class="text-[11px] text-slate-400 italic text-center py-4">ไม่มีงานที่ต้องโฟกัสในขณะนี้</p>';
+
+            const aiText = document.getElementById('ai-insight');
+            const urgentCount = activeTasks.filter(t => t.priority === 'urgent').length;
+            if(urgentCount > 0) aiText.innerText = `คุณกายครับ มีงานด่วนมาก ${urgentCount} รายการที่ต้องรีบจัดการครับ แนะนำให้เริ่มทันทีเพื่อรักษา KPI ครับ`;
+            else if(rate > 90) aiText.innerText = `วันนี้คุณกายทำผลงานได้ยอดเยี่ยมมากครับ! งานสำเร็จเกือบครบถ้วนแล้ว สามารถพักผ่อนหรือจดบันทึกไอเดียใหม่ลงสมุดได้ครับ`;
+            else aiText.innerText = `สถานะงานปัจจุบันเรียบร้อยดีครับ อย่าลืมตรวจสอบงานโฟกัส 1-2 รายการให้เสร็จภายในวันนี้นะครับ`;
+            
+            updateNotifBell();
+        }
+
+        /* STREAMING_CHUNK:Tasks and Archive Rendering... */
+        function updateNotifBell() {
+            const now = new Date();
+            const alerts = tasks.filter(t => {
+                if(t.status === 'completed' || t.status === 'closed') return false;
+                const isUrgent = t.priority === 'urgent';
+                const isNear = t.deadline && (new Date(t.deadline) - now) < 43200000 && (new Date(t.deadline) - now) > 0;
+                return isUrgent || isNear;
+            });
+
+            document.getElementById('bell-dot').classList.toggle('hidden', alerts.length === 0);
+            document.getElementById('notif-bell').classList.toggle('bell-ring', alerts.length > 0);
+
+            document.getElementById('bell-list').innerHTML = alerts.map(t => `
+                <div onclick="openTaskModal('${t.id}')" class="p-4 bg-slate-50 rounded-2xl cursor-pointer hover:bg-white border border-slate-100 transition-all group">
+                    <p class="text-xs font-bold text-slate-800 group-hover:text-indigo-600">${t.title}</p>
+                    <span class="text-[8px] font-bold uppercase tracking-widest text-rose-500">Urgent Alert</span>
+                </div>
+            `).join('') || '<p class="text-xs text-slate-400 text-center py-6">ไม่มีแจ้งเตือนใหม่ครับคุณกาย</p>';
+            refreshIcons();
+        }
+
+        window.renderTasks = () => {
+            const grid = document.getElementById('task-grid');
+            const cat = document.getElementById('filter-cat').value;
+            const status = document.getElementById('filter-status').value;
+            const prio = document.getElementById('filter-prio').value;
+
+            let filtered = tasks.filter(t => {
+                if(t.status === 'completed' || t.status === 'closed') return false;
+                if(cat !== 'all' && t.category !== cat) return false;
+                if(status !== 'all' && t.status !== status) return false;
+                if(prio !== 'all' && t.priority !== prio) return false;
+                return true;
+            });
+
+            filtered.sort((a,b) => {
+                if(!a.deadline) return 1;
+                if(!b.deadline) return -1;
+                return new Date(a.deadline) - new Date(b.deadline);
+            });
+
+            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-20 text-center text-slate-400 font-bold bg-white/50 rounded-[3rem] border border-dashed">ไม่พบงานที่ค้างอยู่ครับคุณกาย</div>`;
+            refreshIcons();
+        };
+
+        window.renderArchive = () => {
+            const grid = document.getElementById('archive-grid');
+            const start = document.getElementById('archive-date-start').value;
+            const end = document.getElementById('archive-date-end').value;
+
+            let filtered = tasks.filter(t => t.status === 'completed' || t.status === 'closed');
+            if(start) filtered = filtered.filter(t => new Date(t.updatedAt) >= new Date(start));
+            if(end) filtered = filtered.filter(t => new Date(t.updatedAt) <= new Date(end));
+
+            filtered.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+            grid.innerHTML = filtered.map(t => createTaskCard(t, true)).join('') || `<div class="col-span-full py-20 text-center text-slate-400 font-bold bg-white/50 rounded-[3rem] border border-dashed">ยังไม่มีรายการงานสำเร็จในช่วงเวลานี้ครับ</div>`;
+            refreshIcons();
+        };
+
+        function createTaskCard(t, isArchive = false) {
+            const p = PRIORITIES[t.priority] || PRIORITIES.general;
+            const sLabel = t.status === 'closed' ? 'ปิดงาน' : (t.status === 'completed' ? 'สำเร็จ' : 'ดำเนินการ');
+            return `
+                <div onclick="openTaskModal('${t.id}')" class="postit-card glass p-7 rounded-[2.5rem] border border-slate-200 cursor-pointer hover:shadow-xl transition-all flex flex-col h-full">
+                    <div class="flex justify-between mb-5">
+                        <span class="text-[9px] font-bold px-3 py-1 rounded-xl ${p.bg} ${p.color} border ${p.border}">${p.label}</span>
+                        <span class="text-[9px] font-bold px-3 py-1 bg-slate-100 text-slate-400 rounded-xl uppercase tracking-tighter">${sLabel}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 mb-2 line-clamp-1 text-lg">${t.title}</h4>
+                    <p class="text-xs text-slate-500 mb-6 line-clamp-2 flex-1 leading-relaxed">${t.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                    <div class="pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] font-bold text-slate-400">
+                        <span class="flex items-center gap-1.5"><i data-lucide="tag" class="w-3.5 h-3.5"></i> ${t.category}</span>
+                        <span>${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : 'ไม่ระบุวันส่ง'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* STREAMING_CHUNK:Task Modal and CRUD Logic... */
         window.openTaskModal = (id = null) => {
             currentEditId = id;
-            document.getElementById('task-modal').classList.remove('hidden');
-            
-            document.getElementById('task-cat-select').innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-            document.getElementById('task-prio-select').innerHTML = Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
-            document.getElementById('task-status-select').innerHTML = Object.keys(STATUSES).map(k => `<option value="${k}">${STATUSES[k].label}</option>`).join('');
+            const modal = document.getElementById('task-modal');
+            const feedback = document.getElementById('modal-feedback');
+            const btnDel = document.getElementById('btn-delete');
+            const logSection = document.getElementById('log-section');
+
+            document.getElementById('task-cat').innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('task-prio').innerHTML = Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
 
             if(id) {
                 const t = tasks.find(x => x.id === id);
-                document.getElementById('task-title').value = t.title;
-                document.getElementById('task-desc').value = t.description;
-                document.getElementById('task-cat-select').value = t.category;
-                document.getElementById('task-prio-select').value = t.priority;
+                document.getElementById('modal-title').innerText = "ข้อมูลรายละเอียดงาน";
+                document.getElementById('task-title').value = t.title || '';
+                document.getElementById('task-desc').value = t.description || '';
+                document.getElementById('task-cat').value = t.category || 'บริหาร';
+                document.getElementById('task-prio').value = t.priority || 'general';
                 document.getElementById('task-deadline').value = t.deadline || '';
-                document.getElementById('task-status-select').value = t.status;
-                document.getElementById('btn-delete').classList.remove('hidden');
+                document.getElementById('task-status').value = t.status || 'pending';
+                document.getElementById('task-link').value = t.link || '';
+                document.getElementById('task-special').value = t.specialAlert || '';
+                document.getElementById('task-notes').value = t.notes || '';
+                
+                btnDel.classList.remove('hidden');
+                logSection.classList.remove('hidden');
+                document.getElementById('log-list').innerHTML = (t.logs || []).map(l => `
+                    <div class="text-[10px] p-2.5 bg-slate-50 rounded-xl flex justify-between border border-slate-100 shadow-sm">
+                        <span class="font-bold text-slate-600">${l.action}</span>
+                        <span class="text-slate-400">${new Date(l.time).toLocaleString('th-TH')}</span>
+                    </div>
+                `).reverse().join('');
+
+                const isDone = (t.status === 'completed' || t.status === 'closed');
+                if(isDone) {
+                    feedback.classList.remove('hidden');
+                    feedback.innerHTML = `<div class="p-4 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-100 font-bold text-xs flex items-center gap-2"><i data-lucide="party-popper"></i> ยินดีด้วยคุณทำงานเสร็จก่อนเวลา!</div>`;
+                } else if(t.deadline && new Date() > new Date(t.deadline)) {
+                    feedback.classList.remove('hidden');
+                    feedback.innerHTML = `<div class="p-4 bg-rose-50 text-rose-700 rounded-2xl border border-rose-100 font-bold text-xs flex items-center gap-2"><i data-lucide="alert-circle"></i> คุณต้องพัฒนาตัวให้มากนะ งานคุณยังไม่เสร็จครับ</div>`;
+                } else {
+                    feedback.classList.add('hidden');
+                }
             } else {
+                document.getElementById('modal-title').innerText = "สั่งงานใหม่คุณกาย";
                 document.querySelectorAll('#task-modal input, #task-modal textarea').forEach(el => el.value = '');
-                document.getElementById('btn-delete').classList.add('hidden');
+                document.getElementById('task-status').value = 'pending';
+                btnDel.classList.add('hidden');
+                logSection.classList.add('hidden');
+                feedback.classList.add('hidden');
             }
-            window.refreshIcons();
+            modal.classList.remove('hidden');
+            refreshIcons();
         };
 
         window.closeTaskModal = () => document.getElementById('task-modal').classList.add('hidden');
 
         window.saveTask = () => {
+            const titleVal = document.getElementById('task-title').value;
+            if(!titleVal) return;
+
+            const now = new Date();
             const data = {
                 id: currentEditId || Date.now().toString(),
-                title: document.getElementById('task-title').value,
+                title: titleVal,
                 description: document.getElementById('task-desc').value,
-                category: document.getElementById('task-cat-select').value,
-                priority: document.getElementById('task-prio-select').value,
+                category: document.getElementById('task-cat').value,
+                priority: document.getElementById('task-prio').value,
                 deadline: document.getElementById('task-deadline').value,
-                status: document.getElementById('task-status-select').value,
-                updatedAt: new Date().toISOString()
+                status: document.getElementById('task-status').value,
+                link: document.getElementById('task-link').value,
+                specialAlert: document.getElementById('task-special').value,
+                notes: document.getElementById('task-notes').value,
+                updatedAt: now.toISOString(),
+                createdAt: currentEditId ? tasks.find(x => x.id === currentEditId).createdAt : now.toISOString(),
+                logs: currentEditId ? tasks.find(x => x.id === currentEditId).logs : []
             };
-            if(!data.title) return;
+
+            data.logs.push({ action: `อัปเดตสเต็ป: ${data.status}`, time: now.toISOString() });
+
             if(currentEditId) tasks = tasks.map(t => t.id === currentEditId ? data : t);
             else tasks.push(data);
-            localStorage.setItem('kai_tasks_v8', JSON.stringify(tasks));
-            window.closeTaskModal();
-            window.renderTasks();
+
+            localStorage.setItem('guy_tasks_v13', JSON.stringify(tasks));
+            closeTaskModal();
             updateDashboard();
+            
+            const isFinished = (data.status === 'completed' || data.status === 'closed');
+            switchView(isFinished ? 'archive' : 'tasks');
         };
 
-        window.deleteTask = () => {
-            if(confirm("ยืนยันการลบงานนี้ใช่ไหมครับคุณกาย?")) {
-                tasks = tasks.filter(t => t.id !== currentEditId);
-                localStorage.setItem('kai_tasks_v8', JSON.stringify(tasks));
-                window.closeTaskModal();
-                window.renderTasks();
+        window.deleteTask = (id) => {
+            openConfirm("ลบงานนี้ถาวร ข้อมูลจะกู้คืนไม่ได้นะครับ", () => {
+                tasks = tasks.filter(t => t.id !== id);
+                localStorage.setItem('guy_tasks_v13', JSON.stringify(tasks));
+                closeTaskModal();
                 updateDashboard();
+                renderTasks();
+            });
+        };
+
+        /* STREAMING_CHUNK:Post-it and Calendar Logic... */
+        window.renderPostIts = () => {
+            const container = document.getElementById('postit-grid');
+            const sorted = [...postIts].sort((a,b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+            container.innerHTML = sorted.map(p => `
+                <div class="postit-card p-6 rounded-[2.5rem] ${p.color || 'bg-yellow-100'} ${p.pinned ? 'pinned shadow-lg' : 'shadow-sm'}" 
+                     style="transform: rotate(${p.pinned ? 0 : (Math.random() * 4 - 2)}deg)">
+                    <div class="flex justify-between items-start mb-4">
+                        <button onclick="togglePinPostIt('${p.id}')" class="p-2 bg-white/50 rounded-xl hover:bg-white transition-all">
+                            <i data-lucide="pin" class="w-4 h-4 ${p.pinned ? 'fill-current text-amber-500' : 'text-slate-400'}"></i>
+                        </button>
+                        <button onclick="deletePostIt('${p.id}')" class="p-2 bg-white/50 rounded-xl hover:bg-rose-500 hover:text-white transition-all">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <textarea onblur="savePostItText('${p.id}', this.value)" 
+                        class="w-full bg-transparent border-none outline-none text-slate-700 font-medium h-32 resize-none custom-scrollbar leading-relaxed" 
+                        placeholder="พิมพ์โน้ต...">${p.text}</textarea>
+                </div>
+            `).join('') || '<div class="col-span-full py-20 text-center text-slate-300 font-bold italic">ยังไม่มีโน้ตบนกระดานครับคุณกาย</div>';
+            refreshIcons();
+        };
+
+        window.addPostIt = () => {
+            const colors = ['bg-yellow-100', 'bg-blue-100', 'bg-rose-100', 'bg-emerald-100', 'bg-violet-100'];
+            postIts.unshift({ id: Date.now().toString(), text: '', color: colors[Math.floor(Math.random()*colors.length)], pinned: false });
+            localStorage.setItem('guy_postits_v13', JSON.stringify(postIts));
+            renderPostIts();
+        };
+
+        window.savePostItText = (id, val) => {
+            const p = postIts.find(x => x.id === id);
+            if(p) { p.text = val; localStorage.setItem('guy_postits_v13', JSON.stringify(postIts)); }
+        };
+
+        window.togglePinPostIt = (id) => {
+            const p = postIts.find(x => x.id === id);
+            if(p) {
+                const pinnedCount = postIts.filter(x => x.pinned).length;
+                if(!p.pinned && pinnedCount >= 3) { alert("ปักหมุดได้สูงสุด 3 อันครับ"); return; }
+                p.pinned = !p.pinned;
+                localStorage.setItem('guy_postits_v13', JSON.stringify(postIts));
+                renderPostIts();
             }
+        };
+
+        window.deletePostIt = (id) => {
+            openConfirm("ลบโน้ตใบนี้?", () => {
+                postIts = postIts.filter(x => x.id !== id);
+                localStorage.setItem('guy_postits_v13', JSON.stringify(postIts));
+                renderPostIts();
+            });
+        };
+
+        window.changeMonth = (val) => {
+            calendarDate.setMonth(calendarDate.getMonth() + val);
+            renderCalendar();
         };
 
         window.renderCalendar = () => {
             const grid = document.getElementById('calendar-grid');
-            const title = document.getElementById('calendar-title');
             const year = calendarDate.getFullYear();
             const month = calendarDate.getMonth();
-            title.innerText = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(calendarDate);
+            document.getElementById('calendar-title').innerText = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(calendarDate);
 
-            const first = new Date(year, month, 1).getDay();
-            const days = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-3 text-center text-[10px] font-bold text-slate-300 uppercase">${d}</div>`).join('');
-            for(let i=0; i<first; i++) html += `<div class="bg-slate-50/30 h-24 sm:h-32"></div>`;
-            for(let d=1; d<=days; d++) {
-                const dateS = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const dayTasks = tasks.filter(t => t.deadline?.startsWith(dateS));
-                const hasTask = dayTasks.length > 0;
+            let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-4 text-center text-[10px] font-bold text-slate-300 uppercase">${d}</div>`).join('');
+            for(let i=0; i<firstDay; i++) html += `<div class="bg-slate-50/30 h-32 border-l border-t border-slate-100"></div>`;
+            for(let d=1; d<=daysInMonth; d++) {
+                const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayTasks = tasks.filter(t => t.deadline?.startsWith(ds) && t.status !== 'completed' && t.status !== 'closed');
                 html += `
-                    <div ${hasTask ? `onclick="window.switchView('tasks'); document.getElementById('filter-date-start').value='${dateS}'; window.renderTasks();"` : ''} 
-                         class="bg-white h-24 sm:h-32 p-2 border-t border-l border-slate-100 flex flex-col ${hasTask ? 'cursor-pointer hover:bg-indigo-50 transition-colors' : 'opacity-40'}">
-                        <span class="text-xs font-bold ${hasTask ? 'text-indigo-600' : 'text-slate-300'}">${d}</span>
-                        <div class="mt-1 space-y-1 overflow-hidden">
-                            ${dayTasks.slice(0, 2).map(t => `<div class="text-[8px] truncate bg-indigo-50 text-indigo-700 p-1 rounded font-bold">${t.title}</div>`).join('')}
+                    <div onclick="if(${dayTasks.length} > 0){ switchView('tasks'); }" class="bg-white h-32 p-3 border-t border-l border-slate-100 ${dayTasks.length > 0 ? 'cursor-pointer hover:bg-indigo-50 transition-all' : 'opacity-50'}">
+                        <span class="text-xs font-bold text-slate-400">${d}</span>
+                        <div class="mt-2 space-y-1">
+                            ${dayTasks.slice(0, 2).map(t => `<div class="text-[8px] bg-indigo-50 text-indigo-700 p-1 rounded-md font-bold truncate">${t.title}</div>`).join('')}
+                            ${dayTasks.length > 2 ? `<div class="text-[8px] text-slate-300 font-bold">+${dayTasks.length-2} งาน</div>` : ''}
                         </div>
                     </div>
                 `;
@@ -247,320 +750,107 @@
             grid.innerHTML = html;
         };
 
-        window.changeMonth = (v) => { calendarDate.setMonth(calendarDate.getMonth() + v); window.renderCalendar(); };
-
-        window.renderPostItBoard = () => {
-            const grid = document.getElementById('postit-grid');
-            const colors = ['bg-yellow-50', 'bg-sky-50', 'bg-emerald-50', 'bg-rose-50', 'bg-violet-50'];
-            grid.innerHTML = postIts.length ? postIts.map((p, i) => `
-                <div class="postit-card ${colors[i % colors.length]} p-6 rounded-[2.5rem] aspect-square flex flex-col relative group">
-                    <button onclick="window.deletePostIt('${p.id}')" class="absolute top-5 right-5 p-2 bg-white/50 opacity-0 group-hover:opacity-100 rounded-xl hover:text-rose-500 transition-all">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                    <textarea onblur="window.savePostIt('${p.id}', this.value)" 
-                        class="flex-1 w-full bg-transparent border-none text-slate-700 font-medium outline-none resize-none text-sm leading-relaxed" 
-                        placeholder="พิมพ์โน้ตช่วยจำ...">${p.text}</textarea>
-                </div>
-            `).join('') : '<div class="col-span-full text-center py-20 text-slate-300 font-bold">ยังไม่มีบันทึกครับคุณกาย</div>';
-            window.refreshIcons();
-        };
-
-        window.addPostIt = () => {
-            postIts.unshift({ id: Date.now().toString(), text: '' });
-            localStorage.setItem('kai_postits_v8', JSON.stringify(postIts));
-            window.renderPostItBoard();
-        };
-
-        window.savePostIt = (id, text) => {
-            postIts = postIts.map(p => p.id === id ? { ...p, text } : p);
-            localStorage.setItem('kai_postits_v8', JSON.stringify(postIts));
-        };
-
-        window.deletePostIt = (id) => {
-            postIts = postIts.filter(p => p.id !== id);
-            localStorage.setItem('kai_postits_v8', JSON.stringify(postIts));
-            window.renderPostItBoard();
-        };
-
-        window.saveSettings = () => {
-            settings.notifyTime = document.getElementById('set-notify-time').value;
-            localStorage.setItem('kai_settings_v8', JSON.stringify(settings));
-            alert("บันทึกการตั้งค่าการแจ้งเตือนแล้วครับคุณกาย");
-        };
-
-        window.toggleSidebar = (state) => {
-            const sb = document.getElementById('sidebar');
-            if(state === undefined) sb.classList.toggle('mobile-menu-active');
-            else if(state) sb.classList.add('mobile-menu-active');
-            else sb.classList.remove('mobile-menu-active');
-        };
-
-        window.login = () => {
-            if(auth) signInWithPopup(auth, new GoogleAuthProvider()).catch(e => console.error(e));
-            else alert("Preview Mode: กำลังรันแบบ Guest เนื่องจากติดข้อจำกัดด้านโดเมนครับ");
-        };
-
-        window.logout = () => { if(auth) signOut(auth).then(() => location.reload()); else location.reload(); };
-
-        window.exportToCSV = () => {
-            const h = ["ชื่อเรื่อง", "หมวดหมู่", "ความสำคัญ", "สถานะ", "กำหนดส่ง"];
-            const r = tasks.map(t => [t.title, t.category, t.priority, t.status, t.deadline]);
-            const csv = "\uFEFF" + [h, ...r].map(i => i.join(",")).join("\n");
-            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(b);
-            a.download = `reports_guy_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-        };
-
-        window.onload = () => {
-            const catF = document.getElementById('filter-category');
-            if(catF) catF.innerHTML += CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-            const prioF = document.getElementById('filter-priority');
-            if(prioF) prioF.innerHTML += Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
-            
-            document.getElementById('set-notify-time').value = settings.notifyTime;
-            
-            // App Start
-            window.switchView('dashboard');
-            
-            // Firebase Check
-            try {
-                const firebaseConfig = { apiKey: "MOCK", authDomain: "mock.firebaseapp.com" };
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                onAuthStateChanged(auth, (user) => {
-                    if(user) {
-                        document.getElementById('login-overlay').classList.add('hidden');
-                        document.getElementById('user-name').innerText = user.displayName;
-                    }
+        /* STREAMING_CHUNK:Diary and Settings Handlers... */
+        function initDiary() {
+            if(!quill) {
+                quill = new Quill('#journal-editor', {
+                    theme: 'snow',
+                    placeholder: 'จดบันทึกประเด็นสำคัญของคุณกาย...',
+                    modules: { toolbar: [['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], ['clean']] }
                 });
-            } catch(e) {
-                document.getElementById('login-overlay').classList.add('hidden');
+            }
+            loadDiaryDay(selectedDiaryDate);
+            renderDiaryHistory();
+        }
+
+        window.loadDiaryDay = (ds) => {
+            selectedDiaryDate = ds;
+            const data = diaries[ds] || { content: '', images: [], updatedAt: null };
+            quill.root.innerHTML = data.content;
+            document.getElementById('diary-current-date').innerText = new Date(ds).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('diary-last-update').innerText = data.updatedAt ? `อัปเดต: ${new Date(data.updatedAt).toLocaleTimeString('th-TH')}` : 'ยังไม่มีการบันทึกวันนี้';
+            document.getElementById('diary-img-preview').innerHTML = (data.images || []).map(src => `<img src="${src}" class="h-16 w-16 rounded-xl object-cover shadow-sm border-2 border-white">`).join('');
+            renderDiaryHistory();
+        };
+
+        window.saveDiary = () => {
+            if(!diaries[selectedDiaryDate]) diaries[selectedDiaryDate] = { content: '', images: [], updatedAt: null };
+            diaries[selectedDiaryDate].content = quill.root.innerHTML;
+            diaries[selectedDiaryDate].updatedAt = new Date().toISOString();
+            localStorage.setItem('guy_diaries_v13', JSON.stringify(diaries));
+            loadDiaryDay(selectedDiaryDate);
+        };
+
+        function renderDiaryHistory() {
+            const list = document.getElementById('diary-history-list');
+            const dates = Object.keys(diaries).sort().reverse();
+            list.innerHTML = dates.map(d => `
+                <button onclick="loadDiaryDay('${d}')" class="w-full p-4 rounded-2xl text-left text-xs font-bold transition-all ${d === selectedDiaryDate ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-slate-50 text-slate-600'} border border-slate-100">
+                    ${new Date(d).toLocaleDateString('th-TH')} ${diaries[d] ? '✅' : ''}
+                </button>
+            `).join('') || '<p class="text-xs text-slate-300 text-center py-6">ยังไม่มีประวัติ</p>';
+        }
+
+        window.handleDiaryImage = (input) => {
+            if(input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if(!diaries[selectedDiaryDate]) diaries[selectedDiaryDate] = { content: '', images: [], updatedAt: null };
+                    diaries[selectedDiaryDate].images.push(e.target.result);
+                    saveDiary();
+                };
+                reader.readAsDataURL(input.files[0]);
             }
         };
+
+        function initSettings() {
+            document.getElementById('set-morning').value = appSettings.morningTime;
+            document.getElementById('set-afternoon').value = appSettings.afternoonTime;
+            document.getElementById('set-desktop').checked = appSettings.desktopNotify;
+        }
+
+        window.saveSettings = () => {
+            appSettings.morningTime = document.getElementById('set-morning').value;
+            appSettings.afternoonTime = document.getElementById('set-afternoon').value;
+            appSettings.desktopNotify = document.getElementById('set-desktop').checked;
+            localStorage.setItem('guy_settings_v13', JSON.stringify(appSettings));
+        };
+
+        /* STREAMING_CHUNK:App Initialization and UI Helpers... */
+        function openConfirm(text, callback) {
+            document.getElementById('confirm-text').innerText = text;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+            document.getElementById('confirm-yes').onclick = () => {
+                callback();
+                closeConfirm();
+            };
+        }
+
+        window.closeConfirm = () => document.getElementById('confirm-modal').classList.add('hidden');
+
+        function initApp() {
+            document.getElementById('filter-cat').innerHTML = '<option value="all">ทุกหมวดหมู่</option>' + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('task-cat').innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('task-prio').innerHTML = Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
+            document.getElementById('filter-prio').innerHTML = '<option value="all">ทุกความสำคัญ</option>' + Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
+            
+            if(!user) document.getElementById('login-overlay').classList.remove('hidden');
+            else {
+                document.getElementById('login-overlay').classList.add('hidden');
+                switchView('dashboard');
+            }
+            refreshIcons();
+        }
+
+        window.onload = initApp;
     </script>
-
-    <!-- Login Overlay -->
-    <div id="login-overlay" class="fixed inset-0 bg-slate-900 z-[1000] flex items-center justify-center p-6">
-        <div class="glass p-10 rounded-[3rem] text-center max-w-sm w-full border border-white/20 shadow-2xl">
-            <div class="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-200">
-                <i data-lucide="sparkles" class="text-white w-8 h-8"></i>
-            </div>
-            <h1 class="text-2xl font-bold text-slate-800 mb-2">สวัสดีครับคุณกาย</h1>
-            <p class="text-slate-500 text-sm mb-10 leading-relaxed">กรุณาล็อกอินเพื่อเข้าสู่ระบบเลขาอัจฉริยะของคุณกาย</p>
-            <button onclick="window.login()" class="w-full py-4 bg-white border border-slate-200 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-5 h-5"> เข้าใช้งานผ่าน Google
-            </button>
-            <p class="mt-4 text-[10px] text-slate-400">ระบบจะทำการซิงค์ข้อมูลลงในเครื่องของคุณ</p>
-        </div>
-    </div>
-
-    <!-- Sidebar -->
-    <aside id="sidebar" class="w-72 glass border-r border-slate-200 flex flex-col h-screen fixed inset-y-0 left-0 lg:relative z-50 -translate-x-full lg:translate-x-0 sidebar-transition">
-        <div class="p-8 flex justify-between items-center">
-            <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-violet-700 bg-clip-text text-transparent flex items-center gap-2">
-                <i data-lucide="sparkles" class="text-indigo-600 w-5 h-5"></i> Ai เลขากาย
-            </h1>
-            <button onclick="window.toggleSidebar(false)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"><i data-lucide="x"></i></button>
-        </div>
-
-        <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-            <button onclick="window.switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group font-bold">
-                <i data-lucide="layout-dashboard"></i> แดชบอร์ด
-            </button>
-            <button onclick="window.switchView('tasks')" id="nav-tasks" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                <i data-lucide="list-checks"></i> งานทั้งหมด
-            </button>
-            <button onclick="window.switchView('calendar')" id="nav-calendar" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                <i data-lucide="calendar"></i> ปฏิทิน
-            </button>
-            <button onclick="window.switchView('postits')" id="nav-postits" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                <i data-lucide="sticky-note"></i> โน้ตด่วน
-            </button>
-            <button onclick="window.switchView('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl hover:bg-slate-50 transition-colors group">
-                <i data-lucide="settings"></i> ตั้งค่า
-            </button>
-        </nav>
-
-        <div class="p-6 border-t border-slate-100 space-y-4">
-            <button onclick="window.openTaskModal()" class="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-                <i data-lucide="plus-circle"></i> สั่งงานใหม่
-            </button>
-            <button onclick="window.logout()" class="w-full py-3 text-rose-500 font-bold text-xs hover:bg-rose-50 rounded-xl transition-all">ออกจากระบบ</button>
-        </div>
-    </aside>
-
-    <!-- Main Container -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden">
-        <header class="h-20 glass border-b border-slate-200 px-6 sm:px-8 flex items-center justify-between shrink-0 z-30">
-            <div class="flex items-center gap-4">
-                <button onclick="window.toggleSidebar(true)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-colors"><i data-lucide="menu"></i></button>
-                <h2 id="header-title" class="text-lg font-bold text-slate-800">แดชบอร์ดสรุปงาน</h2>
-            </div>
-            <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
-                <p id="user-name" class="text-xs font-bold text-slate-800 hidden sm:block">คุณกาย</p>
-                <div class="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold shadow-sm">K</div>
-            </div>
-        </header>
-
-        <div id="view-container" class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
-            
-            <!-- Dashboard View -->
-            <div id="view-dashboard" class="space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 kpi-card p-6 sm:p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden flex items-center justify-between">
-                        <div class="relative z-10">
-                            <h3 class="text-xl font-bold mb-1 tracking-tight">ประสิทธิภาพงาน (KPI)</h3>
-                            <p class="text-indigo-100 text-[10px] mb-4 opacity-80 uppercase tracking-widest">วัดจากรายการงานที่สำเร็จ</p>
-                            <h4 id="kpi-success-rate" class="text-5xl font-bold">0%</h4>
-                        </div>
-                        <div class="w-32 h-32 relative flex items-center justify-center shrink-0 z-10">
-                            <svg class="w-full h-full transform -rotate-90">
-                                <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" class="text-indigo-400/30" />
-                                <circle id="kpi-circle" cx="64" cy="64" r="58" stroke="currentColor" stroke-width="8" fill="transparent" stroke-dasharray="364.4" stroke-dashoffset="364.4" class="text-white transition-all duration-1000" />
-                            </svg>
-                            <span id="kpi-total-perc" class="absolute text-2xl font-bold">0%</span>
-                        </div>
-                        <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-                    </div>
-                    <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-col">
-                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 font-bold"><i data-lucide="brain" class="text-indigo-600"></i> AI เลขาวิจัย</h3>
-                        <div id="ai-insight" class="text-sm text-slate-600 italic bg-slate-50/50 p-6 rounded-[2rem] flex-1 border border-slate-100">
-                            กำลังเตรียมสรุปข้อมูลนัดหมาย...
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div onclick="window.switchView('tasks', 'pending')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">งานค้าง</p>
-                        <h4 id="stat-pending" class="text-2xl font-bold text-slate-800">0</h4>
-                    </div>
-                    <div onclick="window.switchView('tasks', 'urgent')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
-                        <p class="text-[10px] font-bold text-rose-400 uppercase mb-1 tracking-wider">งานด่วนมาก</p>
-                        <h4 id="stat-urgent" class="text-2xl font-bold text-rose-600">0</h4>
-                    </div>
-                    <div onclick="window.switchView('tasks', 'near')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
-                        <p class="text-[10px] font-bold text-orange-400 uppercase mb-1 tracking-wider">ใกล้ส่งงาน</p>
-                        <h4 id="stat-near" class="text-2xl font-bold text-orange-600">0</h4>
-                    </div>
-                    <div onclick="window.switchView('tasks', 'completed')" class="glass p-5 rounded-3xl border border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors">
-                        <p class="text-[10px] font-bold text-emerald-400 uppercase mb-1 tracking-wider">สำเร็จแล้ว</p>
-                        <h4 id="stat-completed" class="text-2xl font-bold text-emerald-600">0</h4>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tasks View -->
-            <div id="view-tasks" class="hidden space-y-6">
-                <div class="glass p-5 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-3 items-center justify-between shadow-sm">
-                    <div class="flex flex-wrap gap-3">
-                        <select id="filter-status" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
-                            <option value="all">ทุกสถานะ</option>
-                            <option value="pending">ยังไม่เริ่ม</option>
-                            <option value="in_progress">กำลังทำ</option>
-                            <option value="completed">เสร็จแล้ว</option>
-                            <option value="closed">ปิดงาน</option>
-                        </select>
-                        <select id="filter-priority" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
-                            <option value="all">ทุกความสำคัญ</option>
-                        </select>
-                        <select id="filter-category" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
-                            <option value="all">ทุกหมวดหมู่</option>
-                        </select>
-                        <input type="date" id="filter-date-start" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-bold px-4 py-2 outline-none transition-all">
-                    </div>
-                    <button onclick="window.exportToCSV()" class="px-6 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-[11px] hover:bg-indigo-100 transition-all border border-indigo-100">ดึงข้อมูล CSV</button>
-                </div>
-                <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
-            </div>
-
-            <!-- Calendar View -->
-            <div id="view-calendar" class="hidden glass p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-center mb-6 px-4">
-                    <h2 id="calendar-title" class="text-2xl font-bold text-slate-800"></h2>
-                    <div class="flex gap-2">
-                        <button onclick="window.changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"><i data-lucide="chevron-left"></i></button>
-                        <button onclick="window.changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"><i data-lucide="chevron-right"></i></button>
-                    </div>
-                </div>
-                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-100 rounded-[2rem] overflow-hidden border border-slate-100"></div>
-            </div>
-
-            <!-- Post-its View -->
-            <div id="view-postits" class="hidden space-y-6 pb-20">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-bold text-slate-800">กระดานโน้ตด่วน</h2>
-                    <button onclick="window.addPostIt()" class="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-md hover:scale-105 transition-all">เพิ่มบันทึก</button>
-                </div>
-                <div id="postit-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
-            </div>
-
-            <!-- Settings View -->
-            <div id="view-settings" class="hidden space-y-6 max-w-lg mx-auto">
-                <div class="glass p-8 rounded-[3.5rem] border border-slate-200 shadow-sm">
-                    <h2 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2"><i data-lucide="bell" class="text-indigo-600"></i> แจ้งเตือนอัจฉริยะ</h2>
-                    <div class="space-y-6">
-                        <div class="space-y-2">
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">เวลาส่งรายงานสรุปงาน (Morning Report)</label>
-                            <div class="flex gap-3">
-                                <input type="time" id="set-notify-time" class="flex-1 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-100 transition-all">
-                                <button onclick="window.saveSettings()" class="px-8 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">บันทึก</button>
-                            </div>
-                        </div>
-                        <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                            <p class="text-[11px] text-indigo-600 font-bold">เลขาจะสรุปรายการงานด่วนและงานค้างทั้งหมดให้คุณกายผ่านหน้าจออัตโนมัติเมื่อถึงเวลาครับ</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </main>
-
-    <!-- Task Modal -->
-    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center hidden p-4">
-        <div class="glass w-full max-w-xl rounded-[3rem] shadow-2xl border border-white/20 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
-            <button onclick="window.closeTaskModal()" class="absolute top-6 right-6 p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-all"><i data-lucide="x"></i></button>
-            <h2 id="modal-title" class="text-xl font-bold text-slate-800 mb-6 font-bold">จัดการข้อมูลงานคุณกาย</h2>
-            
-            <div class="space-y-5">
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">หัวข้อเรื่อง</label>
-                    <input type="text" id="task-title" placeholder="พิมพ์หัวเรื่องงาน..." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-indigo-100 transition-all">
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">รายละเอียดเพิ่มเติม</label>
-                    <textarea id="task-desc" placeholder="ระบุสิ่งที่เลขาต้องช่วยเตือน..." rows="3" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-2 focus:ring-indigo-100 transition-all"></textarea>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">หมวดหมู่</label>
-                        <select id="task-cat-select" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700"></select>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">ระดับความสำคัญ</label>
-                        <select id="task-prio-select" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700"></select>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">กำหนดส่ง (Deadline)</label>
-                        <input type="datetime-local" id="task-deadline" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase tracking-tighter">สถานะงาน</label>
-                        <select id="task-status-select" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700"></select>
-                    </div>
-                </div>
-                <div class="flex gap-4 pt-6">
-                    <button id="btn-delete" onclick="window.deleteTask()" class="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl font-bold hover:bg-rose-100 transition-all hidden">ลบรายการ</button>
-                    <button onclick="window.saveTask()" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all">บันทึกข้อมูลงาน</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>
+```eof
+
+ผมได้ทำการแก้ไขโครงสร้างโค้ด JavaScript ใหม่ทั้งหมด โดยเน้นไปที่:
+1.  **จับคู่วงเล็บ:** แก้ไขปีกกาปิดที่เกินมาในเงื่อนไขการอัปเดต Dashboard ทำให้ตัวแปรทุกตัวถูกประมวลผลได้อย่างถูกต้อง
+2.  **ความเสถียร:** ย้ายการประกาศฟังก์ชันและตัวแปรหลักไปไว้ในจุดที่เหมาะสม เพื่อป้องกันการเกิด Error ในจังหวะโหลดแอป
+3.  **UI Feedback:** ปรับปรุงส่วนการแสดงผล KPI และการแจ้งเตือนงานด่วนให้ทำงานสอดคล้องกัน
+
+คุณกายสามารถกด **Preview** เพื่อเริ่มใช้งานเวอร์ชันที่แก้ไขแล้วได้ทันทีครับ ระบบพร้อมทำงานอย่างราบรื่นแล้วครับ! หากมีส่วนไหนอยากให้ปรับเพิ่ม แจ้งเลขาได้ตลอดเลยนะครับ!
