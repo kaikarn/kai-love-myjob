@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai เลขาของคุณกาย - Platinum Elite v25</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/lucide.min.js"></script>
+    
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    
+    <style>
+        body { 
+            font-family: 'Prompt', 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            color: #1e293b; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        .glass { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
+        .kpi-gradient { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); }
+        .sidebar-active { background: #eef2ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        .postit-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border-radius: 1.5rem; position: relative; }
+        .postit-card:hover { transform: translateY(-8px) rotate(1deg); box-shadow: 0 20px 40px -15px rgba(0,0,0,0.15); }
+        .postit-pinned { border: 4px solid #fbbf24 !important; order: -1; }
+
+        /* Priority Colors for Calendar Bars */
+        .cal-urgent { background-color: #ef4444; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-focus { background-color: #3b82f6; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-important { background-color: #f97316; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cal-general { background-color: #22c55e; color: white; border-radius: 4px; padding: 2px 6px; margin-bottom: 2px; font-size: 10px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        #journal-editor { height: 400px; background: white; border-radius: 0 0 1.5rem 1.5rem; }
+        .ql-toolbar { border-radius: 1.5rem 1.5rem 0 0; background: #f8fafc; border-color: #e2e8f0 !important; }
+        
+        @keyframes ring { 0%, 100% { transform: rotate(0); } 10%, 30%, 50% { transform: rotate(15deg); } 20%, 40% { transform: rotate(-15deg); } }
+        .bell-ring { animation: ring 2s infinite; }
+        .close-btn-red { background-color: #ef4444 !important; color: white !important; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); border-radius: 99px; padding: 10px; z-index: 100; transition: all 0.2s; }
+        .close-btn-red:hover { transform: scale(1.1); }
+
+        /* Quill Custom styling for active image manipulation */
+        .ql-editor img {
+            max-width: 100%;
+            height: auto;
+            cursor: pointer;
+            transition: box-shadow 0.2s ease;
+            display: inline-block;
+        }
+        .ql-editor img.img-active {
+            box-shadow: 0 0 0 4px #4f46e5;
+            outline: 2px dashed #7c3aed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex overflow-hidden">
+
+    <script>
+        window.APP_DATA = {
+            user: JSON.parse(localStorage.getItem('guy_v25_user') || 'null'),
+            tasks: JSON.parse(localStorage.getItem('guy_v25_tasks') || '[]'),
+            postIts: JSON.parse(localStorage.getItem('guy_v25_postits') || '[]'),
+            diaries: JSON.parse(localStorage.getItem('guy_v25_diaries') || '{}'),
+            settings: JSON.parse(localStorage.getItem('guy_v25_settings') || JSON.stringify({
+                notifyDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                morningTime: '08:00',
+                afternoonTime: '13:30',
+                desktopNotify: true
+            }))
+        };
+
+        window.STATE = {
+            calendarDate: new Date(),
+            currentEditId: null,
+            quill: null,
+            selectedDiaryDate: new Date().toISOString().split('T')[0],
+            selectedImgElement: null
+        };
+
+        const CATEGORIES = ['บริหาร', 'ออนไลน์', 'หน่วยรถ', 'โมเดิร์นเทรด', 'งานพัฒนาสินค้า', 'คำสั่งบอส', 'คำสั่งอาจารย์', 'งานออกแบบ', 'อบรม/ประชุม', 'งานประสานงาน', 'งานโปรเจค', 'ส่วนตัว', 'อื่นๆ'];
+        const PRIORITIES = {
+            urgent: { label: 'ด่วนมาก', class: 'cal-urgent', color: '#ef4444' },
+            focus: { label: 'งานโฟกัส', class: 'cal-focus', color: '#3b82f6' },
+            important: { label: 'งานสำคัญ', class: 'cal-important', color: '#f97316' },
+            general: { label: 'งานทั่วไป', class: 'cal-general', color: '#22c55e' }
+        };
+
+        const POSTIT_COLORS = [
+            { bg: '#FFC0C0', text: '#1e293b' }, { bg: '#80B0E8', text: '#1e293b' },
+            { bg: '#D6D35F', text: '#1e293b' }, { bg: '#D1CAEA', text: '#1e293b' },
+            { bg: '#F4D242', text: '#1e293b' }, { bg: '#C45F3F', text: '#ffffff' },
+            { bg: '#008471', text: '#ffffff' }, { bg: '#F29CC3', text: '#1e293b' },
+            { bg: '#898E46', text: '#ffffff' }
+        ];
+
+        window.refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
+
+        window.showToast = (message, type = 'success') => {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+            const toast = document.createElement('div');
+            toast.className = `p-5 rounded-2xl shadow-xl border text-sm font-bold transition-all duration-300 transform translate-y-5 opacity-0 flex items-center gap-3 ${
+                type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+            }`;
+            const icon = type === 'success' ? 'check-circle' : 'alert-triangle';
+            toast.innerHTML = `<i data-lucide="${icon}"></i> <span>${message}</span>`;
+            container.appendChild(toast);
+            if (window.lucide) window.lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-5', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-5', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        };
+
+        window.showConfirm = (msg, callback) => {
+            const modal = document.getElementById('confirm-modal');
+            document.getElementById('confirm-desc').innerText = msg;
+            const yesBtn = document.getElementById('confirm-yes-btn');
+            
+            // Re-bind click event cleanly
+            const newYesBtn = yesBtn.cloneNode(true);
+            yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+            
+            newYesBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                callback();
+            });
+            modal.classList.remove('hidden');
+        };
+
+        window.closeConfirm = () => {
+            document.getElementById('confirm-modal').classList.add('hidden');
+        };
+
+        window.handleLogin = () => {
+            window.APP_DATA.user = { name: 'คุณกาย', avatar: 'K' };
+            localStorage.setItem('guy_v25_user', JSON.stringify(window.APP_DATA.user));
+            document.getElementById('login-overlay').classList.add('hidden');
+            window.switchView('dashboard');
+            window.showToast('สวัสดีครับคุณกาย ยินดีต้อนรับกลับเข้าสู่ระบบครับ');
+        };
+
+        window.handleLogout = () => {
+            window.showConfirm("ต้องการออกจากระบบไหมครับคุณกาย?", () => {
+                localStorage.removeItem('guy_v25_user');
+                location.reload();
+            });
+        };
+
+        window.toggleMobileSidebar = (state) => {
+            const sidebar = document.getElementById('main-sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if(state) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        };
+
+        window.switchView = (view) => {
+            document.querySelectorAll('#view-container > div').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(`view-${view}`);
+            if(target) target.classList.remove('hidden');
+            
+            document.querySelectorAll('aside nav button').forEach(el => el.classList.remove('sidebar-active'));
+            const navBtn = document.getElementById(`nav-${view}`);
+            if(navBtn) navBtn.classList.add('sidebar-active');
+
+            const titles = { 
+                dashboard: 'แดชบอร์ดสรุปงาน', 
+                tasks: 'งานที่ต้องทำ', 
+                archive: 'งานสำเร็จแล้ว', 
+                calendar: 'ปฏิทินนัดหมาย', 
+                postits: 'กระดานโน้ตด่วน', 
+                diary: 'สมุดบันทึกรายวัน', 
+                settings: 'ตั้งค่าระบบ' 
+            };
+            document.getElementById('view-title').innerText = titles[view] || 'เลขาคุณกาย';
+
+            if(view === 'dashboard') updateDashboard();
+            if(view === 'tasks') renderTasks();
+            if(view === 'archive') renderArchive();
+            if(view === 'calendar') renderCalendar();
+            if(view === 'postits') renderPostIts();
+            if(view === 'diary') initDiary();
+            if(view === 'settings') initSettings();
+            
+            refreshIcons();
+            window.toggleMobileSidebar(false);
+        };
+    </script>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[2000] flex flex-col gap-3 max-w-sm pointer-events-none"></div>
+
+    <!-- Login Backdrop -->
+    <div id="login-overlay" class="fixed inset-0 z-[1000] bg-slate-900 flex items-center justify-center p-6 hidden">
+        <div class="glass max-w-md w-full p-12 rounded-[4rem] text-center shadow-2xl border border-white/20">
+            <div class="w-24 h-24 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-10 shadow-xl">
+                <i data-lucide="sparkles" class="text-white w-12 h-12"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-slate-800 mb-2 uppercase tracking-tighter">Ai Secretary Pro</h1>
+            <p class="text-slate-400 mb-12 text-sm italic">"เข้าสู่ระบบเพื่อจัดการงานอัจฉริยะของคุณกาย"</p>
+            <button onclick="window.handleLogin()" class="w-full py-5 bg-white border border-slate-200 rounded-3xl font-bold flex items-center justify-center gap-4 hover:bg-slate-50 transition-all active:scale-95 shadow-lg">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google/light_normal.svg" class="w-7 h-7">
+                ล็อกอินผ่าน Google Account
+            </button>
+            <p class="mt-8 text-[10px] text-slate-300 uppercase tracking-widest font-bold">Stable v25.0</p>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-md hidden flex items-center justify-center p-6">
+        <div class="glass max-w-sm w-full p-8 rounded-[2.5rem] text-center shadow-2xl">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">ยืนยันการดำเนินการ</h3>
+            <p id="confirm-desc" class="text-slate-500 text-sm mb-8"></p>
+            <div class="flex gap-3">
+                <button id="confirm-yes-btn" class="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all">ยืนยัน</button>
+                <button onclick="window.closeConfirm()" class="flex-1 py-3 bg-slate-100 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-all">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar-backdrop" onclick="window.toggleMobileSidebar(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[35] hidden lg:hidden"></div>
+
+    <aside id="main-sidebar" class="fixed lg:relative inset-y-0 left-0 w-72 glass border-r border-slate-200 flex flex-col z-40 -translate-x-full lg:translate-x-0 transition-transform duration-300">
+        <div class="p-8">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-700 bg-clip-text text-transparent flex items-center gap-3">
+                <i data-lucide="sparkles" class="text-indigo-600"></i> Ai เลขากาย
+            </h1>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Management Pro v25</p>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
+            <button onclick="window.switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="layout-dashboard"></i> แดชบอร์ด
+            </button>
+            <button onclick="window.switchView('tasks')" id="nav-tasks" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="list-checks"></i> งานที่ต้องทำ
+            </button>
+            <button onclick="window.switchView('archive')" id="nav-archive" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="archive"></i> งานสำเร็จแล้ว
+            </button>
+            <button onclick="window.switchView('calendar')" id="nav-calendar" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="calendar"></i> ปฏิทินนัดหมาย
+            </button>
+            <button onclick="window.switchView('postits')" id="nav-postits" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="sticky-note"></i> กระดานโน้ตด่วน
+            </button>
+            <button onclick="window.switchView('diary')" id="nav-diary" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="book-open"></i> สมุดบันทึกรายวัน
+            </button>
+            <button onclick="window.switchView('settings')" id="nav-settings" class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all hover:bg-slate-50 group font-medium text-slate-500">
+                <i data-lucide="settings"></i> ตั้งค่าระบบ
+            </button>
+        </nav>
+
+        <div class="p-6 border-t border-slate-100">
+            <button onclick="window.openTaskModal()" class="w-full py-5 bg-indigo-600 text-white rounded-[2rem] font-bold shadow-xl hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3 mb-6">
+                <i data-lucide="plus-circle" class="w-6 h-6"></i> สั่งงานใหม่
+            </button>
+            <button onclick="window.handleLogout()" class="w-full py-2 text-rose-500 font-bold text-xs uppercase tracking-tighter text-center">ออกจากระบบ</button>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-slate-50/30 text-slate-800">
+        <!-- Header -->
+        <header class="h-20 glass border-b border-slate-200 px-6 lg:px-8 flex items-center justify-between shrink-0 z-30">
+            <div class="flex items-center gap-4">
+                <button onclick="window.toggleMobileSidebar(true)" class="lg:hidden p-2 hover:bg-slate-100 rounded-lg"><i data-lucide="menu"></i></button>
+                <h2 id="view-title" class="text-lg font-bold text-slate-800">แดชบอร์ด</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="relative group">
+                    <button class="p-3 hover:bg-slate-100 rounded-2xl relative">
+                        <i data-lucide="bell" id="notif-bell" class="w-6 h-6 text-slate-400 group-hover:text-indigo-600"></i>
+                        <span id="bell-dot" class="absolute top-3 right-3 w-3 h-3 bg-rose-500 border-2 border-white rounded-full hidden"></span>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-80 glass border border-slate-200 rounded-[2rem] shadow-2xl invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all p-6 z-50">
+                        <h4 class="font-bold text-slate-800 mb-4">รายงานสรุปประจำรอบ</h4>
+                        <div id="bell-list" class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar"></div>
+                    </div>
+                </div>
+                <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">K</div>
+            </div>
+        </header>
+
+        <!-- View Container -->
+        <div id="view-container" class="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar relative">
+            
+            <div id="view-dashboard" class="space-y-10">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                    <div onclick="window.switchView('tasks')" class="glass p-6 rounded-[2.5rem] card-pending hover:shadow-xl transition-all cursor-pointer border-l-8 border-amber-400">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="p-3 bg-amber-50 text-amber-600 rounded-2xl"><i data-lucide="clock"></i></div>
+                            <h4 id="dash-pending" class="text-3xl font-bold">0</h4>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานค้างทั้งหมด</p>
+                    </div>
+                    <div onclick="window.openDashboardModal('urgent')" class="glass p-6 rounded-[2.5rem] card-urgent hover:shadow-xl transition-all cursor-pointer border-l-8 border-rose-500">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="p-3 bg-rose-50 text-rose-600 rounded-2xl"><i data-lucide="flame"></i></div>
+                            <h4 id="dash-urgent" class="text-3xl font-bold">0</h4>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานด่วน</p>
+                    </div>
+                    <div onclick="window.openDashboardModal('focus')" class="glass p-6 rounded-[2.5rem] card-focus hover:shadow-xl transition-all cursor-pointer border-l-8 border-blue-500">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl"><i data-lucide="target"></i></div>
+                            <h4 id="dash-focus" class="text-3xl font-bold">0</h4>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานโฟกัส</p>
+                    </div>
+                    <div onclick="window.switchView('archive')" class="glass p-6 rounded-[2.5rem] card-completed hover:shadow-xl transition-all cursor-pointer border-l-8 border-emerald-500">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><i data-lucide="check-circle-2"></i></div>
+                            <h4 id="dash-completed" class="text-3xl font-bold">0</h4>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">งานที่สำเร็จ</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 kpi-gradient p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden flex items-center justify-between">
+                        <div class="relative z-10">
+                            <h3 class="text-2xl font-bold mb-1">Performance Summary</h3>
+                            <p class="text-indigo-100 text-sm mb-6 opacity-80">อัตราความสำเร็จโดยรวมของคุณกาย</p>
+                            <h4 id="kpi-rate" class="text-6xl font-bold tracking-tighter">0%</h4>
+                        </div>
+                        <div class="w-32 h-32 relative flex items-center justify-center shrink-0">
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="64" cy="64" r="58" stroke="currentColor" stroke-width="10" fill="transparent" class="text-white/20" />
+                                <circle id="kpi-circle" cx="64" cy="64" r="58" stroke="currentColor" stroke-width="10" fill="transparent" stroke-dasharray="364.4" stroke-dashoffset="364.4" class="text-white transition-all duration-1000" />
+                            </svg>
+                            <span id="kpi-perc" class="absolute text-xl font-bold">0%</span>
+                        </div>
+                    </div>
+                    <div class="glass p-8 rounded-[3rem] border border-slate-200 flex flex-col">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-indigo-600"><i data-lucide="brain"></i> AI เลขาวิจัย</h3>
+                        <div id="ai-insight" class="text-sm text-slate-500 leading-relaxed italic bg-slate-50 p-5 rounded-2xl border border-slate-100 flex-1">กำลังรวบรวมข้อมูล...</div>
+                    </div>
+                </div>
+
+                <!-- Pinned Post-its at Bottom -->
+                <div class="space-y-6 pt-4">
+                    <h4 class="font-bold text-slate-800 flex items-center gap-3 uppercase tracking-widest text-xs ml-4"><i data-lucide="pin" class="text-amber-500 fill-current"></i> บันทึกที่ปักหมุดไว้สำหรับคุณกาย</h4>
+                    <div id="dash-pinned-notes" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-12"></div>
+                </div>
+            </div>
+
+            <div id="view-tasks" class="hidden space-y-6">
+                <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
+                    <div class="flex gap-3 flex-wrap">
+                        <select id="filter-cat" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none"></select>
+                        <select id="filter-status" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
+                            <option value="all">ทุกสเต็ป</option>
+                            <option value="pending">ยังไม่เริ่ม</option>
+                            <option value="in_progress">กำลังทำ</option>
+                        </select>
+                        <select id="filter-prio" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none">
+                            <option value="all">ทุกความสำคัญ</option>
+                            <option value="urgent">ด่วนมาก</option>
+                            <option value="focus">งานโฟกัส</option>
+                            <option value="important">งานสำคัญ</option>
+                            <option value="general">งานทั่วไป</option>
+                        </select>
+                        <input type="date" id="filter-date-created" onchange="window.renderTasks()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700">
+                    </div>
+                    <button onclick="window.clearFilters()" class="text-xs px-6 py-2 bg-slate-100 text-slate-500 rounded-xl font-bold hover:bg-slate-200 transition-all uppercase tracking-widest">ล้างสถานะตัวกรอง</button>
+                </div>
+                <div id="task-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
+            </div>
+
+            <div id="view-archive" class="hidden space-y-6">
+                <div class="glass p-6 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-4 items-center justify-between shadow-sm">
+                    <div class="flex gap-3 flex-wrap items-end">
+                        <div>
+                            <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">กรองวันที่เดดไลน์เริ่ม</label>
+                            <input type="date" id="archive-date-start" onchange="window.renderArchive()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold w-full text-slate-700">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">กรองวันที่เดดไลน์สิ้นสุด</label>
+                            <input type="date" id="archive-date-end" onchange="window.renderArchive()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold w-full text-slate-700">
+                        </div>
+                        <div class="w-48">
+                            <label class="text-[9px] font-bold text-slate-400 uppercase ml-1">สถานะ</label>
+                            <select id="archive-status" onchange="window.renderArchive()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold w-full text-slate-700 h-10 outline-none">
+                                <option value="all">ทุกสถานะสำเร็จ</option>
+                                <option value="completed">เสร็จแล้ว</option>
+                                <option value="closed">ปิดงาน</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="archive-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20"></div>
+            </div>
+
+            <div id="view-calendar" class="hidden glass p-10 rounded-[3rem] border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <h2 id="calendar-title" class="text-3xl font-bold text-slate-800 tracking-tighter"></h2>
+                        <div class="flex flex-wrap gap-4 mt-2">
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-2.5 h-2.5 rounded-full cal-urgent shadow-sm"></span> ด่วนมาก</span>
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-2.5 h-2.5 rounded-full cal-focus shadow-sm"></span> โฟกัส</span>
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-2.5 h-2.5 rounded-full cal-important shadow-sm"></span> สำคัญ</span>
+                            <span class="flex items-center gap-1 text-[9px] font-bold uppercase"><span class="w-2.5 h-2.5 rounded-full cal-general shadow-sm"></span> ทั่วไป</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="window.changeMonth(-1)" class="p-3 hover:bg-slate-100 rounded-2xl transition-all shadow-sm"><i data-lucide="chevron-left"></i></button>
+                        <button onclick="window.changeMonth(1)" class="p-3 hover:bg-slate-100 rounded-2xl transition-all shadow-sm"><i data-lucide="chevron-right"></i></button>
+                    </div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-px bg-slate-200 rounded-[2.5rem] overflow-hidden border border-slate-200 shadow-inner"></div>
+            </div>
+
+            <div id="view-postits" class="hidden space-y-8">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-3xl font-bold text-slate-800 tracking-tighter">กระดานโน้ตด่วน</h2>
+                    <button onclick="window.addPostIt()" class="px-8 py-4 bg-indigo-600 text-white rounded-[2rem] font-bold shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-2 active:scale-95">
+                        <i data-lucide="plus"></i> เพิ่มโน้ตใหม่
+                    </button>
+                </div>
+                <div id="postit-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-4 items-start pb-20"></div>
+            </div>
+
+            <div id="view-diary" class="hidden h-full flex flex-col lg:flex-row gap-8">
+                <aside class="w-full lg:w-72 glass rounded-[3rem] border border-slate-200 p-8 flex flex-col shrink-0">
+                    <h4 class="font-bold text-slate-800 mb-6 text-center uppercase tracking-widest text-xs">ปฏิทินบันทึก</h4>
+                    <div class="flex flex-col gap-4 mb-6">
+                        <select id="diary-filter-year" onchange="window.renderDiaryHistory()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none text-slate-700"></select>
+                        <select id="diary-filter-month" onchange="window.renderDiaryHistory()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold outline-none text-slate-700">
+                            <option value="all">ทุกเดือน</option>
+                            <option value="01">มกราคม</option><option value="02">กุมภาพันธ์</option><option value="03">มีนาคม</option>
+                            <option value="04">เมษายน</option><option value="05">พฤษภาคม</option><option value="06">มิถุนายน</option>
+                            <option value="07">กรกฎาคม</option><option value="08">สิงหาคม</option><option value="09">กันยายน</option>
+                            <option value="10">ตุลาคม</option><option value="11">พฤศจิกายน</option><option value="12">ธันวาคม</option>
+                        </select>
+                    </div>
+                    <div id="diary-history-list" class="flex-1 space-y-2 overflow-y-auto custom-scrollbar pr-2 max-h-64 lg:max-h-full"></div>
+                </aside>
+                <div class="flex-1 flex flex-col gap-6">
+                    <div id="diary-preview-container" class="glass p-10 rounded-[3.5rem] border border-slate-200 flex-1 flex flex-col relative shadow-sm">
+                        <div class="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
+                            <div>
+                                <h3 id="diary-view-date" class="text-3xl font-bold text-slate-800 tracking-tighter uppercase"></h3>
+                                <div id="diary-view-logs" class="flex flex-wrap mt-2 gap-2"></div>
+                            </div>
+                            <button id="diary-edit-btn" onclick="window.toggleDiaryEdit(true)" class="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg active:scale-95 transition-all text-sm flex items-center gap-2"><i data-lucide="edit"></i> แก้ไขบันทึก</button>
+                        </div>
+                        <div id="diary-view-content" class="ql-editor flex-1 text-slate-600 leading-relaxed overflow-y-auto custom-scrollbar pr-4 text-lg"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-settings" class="hidden max-w-2xl mx-auto space-y-8 pb-20">
+                <div class="glass p-10 rounded-[3.5rem] border border-slate-200 shadow-sm">
+                    <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-3"><i data-lucide="bell" class="text-indigo-600"></i> ตั้งค่าการแจ้งเตือน</h3>
+                    <div class="space-y-10">
+                        <div class="grid grid-cols-2 gap-8">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block ml-1">รายงานสรุปเช้า</label>
+                                <input type="time" id="set-morning" onchange="window.saveSettings()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold border border-slate-200 outline-none text-slate-700">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block ml-1">รายงานสรุปบ่าย</label>
+                                <input type="time" id="set-afternoon" onchange="window.saveSettings()" class="w-full p-5 bg-slate-50 rounded-2xl font-bold border border-slate-200 outline-none text-slate-700">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase mb-3 block ml-1">วันที่ต้องการแจ้งเตือน</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button id="day-monday" onclick="window.toggleDay('monday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">จันทร์</button>
+                                <button id="day-tuesday" onclick="window.toggleDay('tuesday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">อังคาร</button>
+                                <button id="day-wednesday" onclick="window.toggleDay('wednesday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">พุธ</button>
+                                <button id="day-thursday" onclick="window.toggleDay('thursday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">พฤหัสบดี</button>
+                                <button id="day-friday" onclick="window.toggleDay('friday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">ศุกร์</button>
+                                <button id="day-saturday" onclick="window.toggleDay('saturday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">เสาร์</button>
+                                <button id="day-sunday" onclick="window.toggleDay('sunday')" class="px-4 py-2.5 rounded-xl border text-xs font-bold transition-all">อาทิตย์</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-4 sm:p-8">
+        <div class="glass w-full max-w-2xl rounded-[3.5rem] shadow-2xl border border-white p-10 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="window.closeTaskModal()" class="absolute top-8 right-8 close-btn-red hover:scale-110 transition-all flex items-center justify-center h-10 w-10">
+                <i data-lucide="x" class="text-white w-6 h-6"></i>
+            </button>
+            <h2 id="modal-title" class="text-2xl font-bold text-slate-800 mb-8 tracking-tighter">รายละเอียดงานคุณกาย</h2>
+            <div id="modal-feedback" class="mb-6 hidden"></div>
+            <div class="space-y-6">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">หัวข้อเรื่อง</label>
+                    <input type="text" id="task-title" placeholder="ชื่อเรื่องงาน..." class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-lg focus:ring-4 focus:ring-indigo-50 transition-all text-slate-700">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase ml-1 block mb-1">รายละเอียดงาน</label>
+                    <textarea id="task-desc" placeholder="ระบุรายละเอียด..." rows="3" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium focus:ring-4 focus:ring-indigo-50 transition-all text-slate-700"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <select id="task-cat" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none text-slate-700 outline-none"></select>
+                    <select id="task-prio" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none text-slate-700 outline-none"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-400 ml-1">กำหนดส่ง (Deadline)</label>
+                        <input type="datetime-local" id="task-deadline" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-bold text-slate-400 ml-1">สถานะ</label>
+                        <select id="task-status" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold appearance-none text-slate-700 outline-none">
+                            <option value="pending">ยังไม่เริ่ม</option>
+                            <option value="in_progress">กำลังทำ</option>
+                            <option value="completed">เสร็จแล้ว</option>
+                            <option value="closed">ปิดงาน</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase tracking-widest">วันแจ้งเตือนล่วงหน้าพิเศษ</label>
+                    <input type="datetime-local" id="task-special-alert" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none">
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase tracking-widest">หมายเหตุ</label>
+                    <textarea id="task-notes" placeholder="จดบันทึกเสริม..." rows="2" class="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 outline-none"></textarea>
+                </div>
+                <!-- Links list -->
+                <div class="space-y-4 pt-4 border-t border-slate-50">
+                    <label class="text-[9px] font-bold text-slate-400 ml-1 uppercase tracking-widest block font-bold">ลิงก์แนบงาน (สูงสุด 3 ลิงก์)</label>
+                    <div class="flex gap-4"><input type="url" id="task-link-1" placeholder="Link 1..." class="flex-1 p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700"><button onclick="goToLink(1)" class="px-5 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all shadow-sm"><i data-lucide="external-link"></i></button></div>
+                    <div class="flex gap-4"><input type="url" id="task-link-2" placeholder="Link 2..." class="flex-1 p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700"><button onclick="goToLink(2)" class="px-5 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all shadow-sm"><i data-lucide="external-link"></i></button></div>
+                    <div class="flex gap-4"><input type="url" id="task-link-3" placeholder="Link 3..." class="flex-1 p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700"><button onclick="goToLink(3)" class="px-5 bg-indigo-50 text-indigo-600 rounded-xl font-bold border border-indigo-100 hover:bg-white transition-all shadow-sm"><i data-lucide="external-link"></i></button></div>
+                </div>
+                <div id="log-section" class="hidden border-t pt-8">
+                    <h5 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4"></i> ประวัติการอัปเดต</h5>
+                    <div id="log-list" class="space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-2"></div>
+                </div>
+                <div class="flex gap-4 pt-4 pb-8">
+                    <button id="btn-delete" onclick="window.handleDeleteTask()" class="px-8 py-5 bg-rose-50 text-rose-600 rounded-3xl font-bold hidden hover:bg-rose-100 border border-rose-100 active:scale-95 transition-all">ลบงานนี้</button>
+                    <button onclick="window.saveTask()" class="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-bold shadow-xl hover:bg-indigo-700 active:scale-95 transition-all uppercase tracking-widest">บันทึกข้อมูลงาน</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Beautiful Responsive Diary Editor Modal Overlay -->
+    <div id="diary-editor-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-center justify-center hidden p-4 sm:p-6 lg:p-10">
+        <div class="glass w-full max-w-5xl rounded-[3rem] lg:rounded-[4rem] shadow-2xl p-6 lg:p-10 flex flex-col h-[95vh] relative">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-6 shrink-0">
+                <h2 class="text-xl lg:text-2xl font-bold text-slate-800 uppercase tracking-tighter">แก้ไขบันทึก: <span id="diary-edit-date-title" class="text-indigo-600"></span></h2>
+                <button onclick="window.toggleDiaryEdit(false)" class="p-3 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-all active:scale-90 shadow-lg"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="flex-1 min-h-0 flex flex-col relative">
+                <!-- Image Floating Action Controller Bar -->
+                <div id="image-controller-bar" class="absolute z-50 bg-slate-900/95 backdrop-blur text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-3 hidden transition-all border border-slate-700 text-xs flex-wrap justify-center max-w-[95vw] sm:max-w-none">
+                    <span class="font-bold border-r border-slate-700 pr-2 hidden sm:inline">รูปภาพ:</span>
+                    <!-- Move / Shuffle Layout Positions -->
+                    <button onclick="window.moveSelectedImage('up')" class="p-1 hover:bg-slate-800 rounded font-bold flex items-center justify-center w-6 h-6 border border-slate-700" title="ขยับขึ้น"><i data-lucide="arrow-up" class="w-4 h-4 text-emerald-400"></i></button>
+                    <button onclick="window.moveSelectedImage('down')" class="p-1 hover:bg-slate-800 rounded font-bold flex items-center justify-center w-6 h-6 border border-slate-700" title="ขยับลง"><i data-lucide="arrow-down" class="w-4 h-4 text-emerald-400"></i></button>
+                    <span class="text-slate-600">|</span>
+                    <!-- Resizing Presets -->
+                    <button onclick="window.adjustSelectedImageWidth(25)" class="px-2 py-1 hover:bg-slate-800 rounded font-bold">25%</button>
+                    <button onclick="window.adjustSelectedImageWidth(50)" class="px-2 py-1 hover:bg-slate-800 rounded font-bold">50%</button>
+                    <button onclick="window.adjustSelectedImageWidth(75)" class="px-2 py-1 hover:bg-slate-800 rounded font-bold">75%</button>
+                    <button onclick="window.adjustSelectedImageWidth(100)" class="px-2 py-1 hover:bg-slate-800 rounded font-bold">100%</button>
+                    <span class="text-slate-600">|</span>
+                    <!-- Scaling micro adjustments -->
+                    <button onclick="window.scaleSelectedImage(-10)" class="p-1 hover:bg-slate-800 rounded font-bold flex items-center justify-center w-6 h-6 border border-slate-700" title="ย่อขนาด"><i data-lucide="minus-circle" class="w-4 h-4"></i></button>
+                    <button onclick="window.scaleSelectedImage(10)" class="p-1 hover:bg-slate-800 rounded font-bold flex items-center justify-center w-6 h-6 border border-slate-700" title="ขยายขนาด"><i data-lucide="plus-circle" class="w-4 h-4"></i></button>
+                    <span class="text-slate-600">|</span>
+                    <!-- Alignments -->
+                    <button onclick="window.alignSelectedImage('left')" class="p-1 hover:bg-slate-800 rounded" title="ชิดซ้าย"><i data-lucide="align-left" class="w-4 h-4"></i></button>
+                    <button onclick="window.alignSelectedImage('center')" class="p-1 hover:bg-slate-800 rounded" title="กึ่งกลาง"><i data-lucide="align-center" class="w-4 h-4"></i></button>
+                    <button onclick="window.alignSelectedImage('right')" class="p-1 hover:bg-slate-800 rounded" title="ชิดขวา"><i data-lucide="align-right" class="w-4 h-4"></i></button>
+                    <span class="text-slate-600">|</span>
+                    <!-- Destroy -->
+                    <button onclick="window.deleteSelectedImage()" class="p-1.5 bg-rose-600 hover:bg-rose-700 rounded text-white" title="ลบรูปภาพ"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+
+                <!-- Rich Text Editor Container -->
+                <div id="journal-editor" class="flex-1 shadow-inner overflow-y-auto custom-scrollbar"></div>
+            </div>
+            
+            <!-- Modern Responsive Emoji Picker Container & Buttons -->
+            <div class="mt-6 shrink-0 flex flex-col gap-4">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div class="relative">
+                        <button onclick="window.toggleEmojiPicker()" class="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-semibold flex items-center gap-2 transition-all active:scale-95 text-sm border border-slate-200">
+                            <i data-lucide="smile" class="text-indigo-600"></i> เลือกอิโมจิอัจฉริยะ
+                        </button>
+                        <!-- Beautiful Floating Emoji Box -->
+                        <div id="diary-emoji-picker" class="absolute bottom-16 left-0 bg-white border border-slate-200 rounded-3xl shadow-2xl p-5 w-72 h-80 hidden flex-col z-[150] transition-all">
+                            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">แตะเพื่อใส่อิโมจิ</span>
+                                <button onclick="window.toggleEmojiPicker(false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                            </div>
+                            <div class="grid grid-cols-6 gap-2 overflow-y-auto flex-1 custom-scrollbar text-2xl pr-1">
+                                <button onclick="window.insertEmoji('😊')" class="hover:scale-125 transition-transform">😊</button>
+                                <button onclick="window.insertEmoji('🥰')" class="hover:scale-125 transition-transform">🥰</button>
+                                <button onclick="window.insertEmoji('😍')" class="hover:scale-125 transition-transform">😍</button>
+                                <button onclick="window.insertEmoji('😂')" class="hover:scale-125 transition-transform">😂</button>
+                                <button onclick="window.insertEmoji('🤣')" class="hover:scale-125 transition-transform">🤣</button>
+                                <button onclick="window.insertEmoji('😎')" class="hover:scale-125 transition-transform">😎</button>
+                                <button onclick="window.insertEmoji('🤩')" class="hover:scale-125 transition-transform">🤩</button>
+                                <button onclick="window.insertEmoji('👍')" class="hover:scale-125 transition-transform">👍</button>
+                                <button onclick="window.insertEmoji('🔥')" class="hover:scale-125 transition-transform">🔥</button>
+                                <button onclick="window.insertEmoji('🚀')" class="hover:scale-125 transition-transform">🚀</button>
+                                <button onclick="window.insertEmoji('💯')" class="hover:scale-125 transition-transform">💯</button>
+                                <button onclick="window.insertEmoji('✅')" class="hover:scale-125 transition-transform">✅</button>
+                                <button onclick="window.insertEmoji('🎯')" class="hover:scale-125 transition-transform">🎯</button>
+                                <button onclick="window.insertEmoji('💡')" class="hover:scale-125 transition-transform">💡</button>
+                                <button onclick="window.insertEmoji('📅')" class="hover:scale-125 transition-transform">📅</button>
+                                <button onclick="window.insertEmoji('📝')" class="hover:scale-125 transition-transform">📝</button>
+                                <button onclick="window.insertEmoji('💻')" class="hover:scale-125 transition-transform">💻</button>
+                                <button onclick="window.insertEmoji('📊')" class="hover:scale-125 transition-transform">📊</button>
+                                <button onclick="window.insertEmoji('💼')" class="hover:scale-125 transition-transform">💼</button>
+                                <button onclick="window.insertEmoji('🤝')" class="hover:scale-125 transition-transform">🤝</button>
+                                <button onclick="window.insertEmoji('⭐')" class="hover:scale-125 transition-transform">⭐</button>
+                                <button onclick="window.insertEmoji('📌')" class="hover:scale-125 transition-transform">📌</button>
+                                <button onclick="window.insertEmoji('🎉')" class="hover:scale-125 transition-transform">🎉</button>
+                                <button onclick="window.insertEmoji('❤️')" class="hover:scale-125 transition-transform">❤️</button>
+                                <button onclick="window.insertEmoji('👏')" class="hover:scale-125 transition-transform">👏</button>
+                                <button onclick="window.insertEmoji('🙏')" class="hover:scale-125 transition-transform">🙏</button>
+                                <button onclick="window.insertEmoji('💪')" class="hover:scale-125 transition-transform">💪</button>
+                                <button onclick="window.insertEmoji('☕')" class="hover:scale-125 transition-transform">☕</button>
+                                <button onclick="window.insertEmoji('🍕')" class="hover:scale-125 transition-transform">🍕</button>
+                                <button onclick="window.insertEmoji('✈️')" class="hover:scale-125 transition-transform">✈️</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="window.toggleDiaryEdit(false)" class="px-6 py-4 bg-slate-50 text-slate-400 rounded-2xl font-bold uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95 text-xs lg:text-sm">ยกเลิก</button>
+                        <button onclick="window.saveDiary()" class="px-8 lg:px-12 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg hover:bg-indigo-700 active:scale-95 transition-all uppercase tracking-widest text-xs lg:text-sm">บันทึกสมุดบันทึก</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dash Summary Modal -->
+    <div id="dash-list-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center hidden p-8">
+        <div class="glass w-full max-w-2xl rounded-[4rem] shadow-2xl border border-white p-12 max-h-[80vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="window.closeDashboardModal()" class="absolute top-10 right-10 p-4 hover:bg-slate-100 rounded-full text-slate-400 transition-all active:scale-90"><i data-lucide="x" class="w-8 h-8"></i></button>
+            <h2 id="dash-modal-title" class="text-4xl font-bold text-slate-800 mb-12 uppercase tracking-tighter"></h2>
+            <div id="dash-modal-list" class="space-y-4 pb-12"></div>
+        </div>
+    </div>
+
+    <script>
+        window.openDashboardModal = (type) => {
+            const list = window.APP_DATA.tasks.filter(t => (t.status !== 'completed' && t.status !== 'closed' && t.priority === type));
+            document.getElementById('dash-modal-title').innerText = type === 'urgent' ? 'รายการงานด่วนพิเศษ' : 'รายการงานโฟกัสหลัก';
+            document.getElementById('dash-modal-list').innerHTML = list.map(t => `
+                <div onclick="window.closeDashboardModal(); window.openTaskModal('${t.id}')" class="p-8 bg-slate-50 hover:bg-white border border-slate-100 rounded-[2.5rem] cursor-pointer shadow-sm transition-all flex justify-between items-center group">
+                    <span class="font-bold text-slate-700 text-lg group-hover:text-indigo-600 transition-colors">${t.title}</span>
+                    <i data-lucide="arrow-right" class="w-6 h-6 text-slate-400 group-hover:translate-x-3 transition-transform"></i>
+                </div>
+            `).join('') || '<p class="text-center text-slate-400 py-16 italic font-bold">ไม่มีรายการงานในหมวดนี้ครับคุณกาย</p>';
+            document.getElementById('dash-list-modal').classList.remove('hidden');
+            refreshIcons();
+        };
+
+        window.closeDashboardModal = () => document.getElementById('dash-list-modal').classList.add('hidden');
+
+        function updateDashboard() {
+            const tasks = window.APP_DATA.tasks;
+            const stats = {
+                pending: tasks.filter(t => t.status !== 'completed' && t.status !== 'closed').length,
+                urgent: tasks.filter(t => (t.priority === 'urgent') && t.status !== 'closed' && t.status !== 'completed').length,
+                focus: tasks.filter(t => t.priority === 'focus' && t.status !== 'closed' && t.status !== 'completed').length,
+                completed: tasks.filter(t => t.status === 'completed' || t.status === 'closed').length
+            };
+
+            for(const k in stats) {
+                const el = document.getElementById(`dash-${k}`);
+                if(el) el.innerText = stats[k];
+            }
+
+            const total = tasks.length || 1;
+            const rate = Math.round((stats.completed / total) * 100);
+            const rateEl = document.getElementById('kpi-rate');
+            const percEl = document.getElementById('kpi-perc');
+            const circleEl = document.getElementById('kpi-circle');
+            if(rateEl) rateEl.innerText = rate + '%';
+            if(percEl) percEl.innerText = rate + '%';
+            if(circleEl) circleEl.style.strokeDashoffset = 364.4 - (364.4 * rate / 100);
+
+            const aiInsight = document.getElementById('ai-insight');
+            if(aiInsight) {
+                if(stats.urgent > 0) aiInsight.innerText = `คุณกายครับ มีงานด่วนที่ยังไม่ปิด ${stats.urgent} รายการ แนะนำให้เริ่มทันทีเพื่อรักษา KPI นะครับ`;
+                else if(rate > 80) aiInsight.innerText = `ยอดเยี่ยมมากครับเจ้านาย! ประสิทธิภาพงานสูงถึง ${rate}% ทุกอย่างอยู่ในเกณฑ์ดีมากครับ`;
+                else aiInsight.innerText = `สถานะงานปกติครับ อย่าลืมตรวจสอบงานโฟกัส ${stats.focus} รายการที่คุณวางแผนไว้นะครับ`;
+            }
+
+            // Pinned Post-its at Bottom v25
+            const pinnedNotes = window.APP_DATA.postIts.filter(p => p.pinned);
+            const dashPinnedGrid = document.getElementById('dash-pinned-notes');
+            if(dashPinnedGrid) {
+                dashPinnedGrid.innerHTML = pinnedNotes.map(p => `
+                    <div onclick="window.switchView('postits')" class="p-10 rounded-[3.5rem] shadow-2xl flex flex-col border border-black/5 hover:scale-[1.03] transition-all cursor-pointer h-64" style="background-color: ${p.color?.bg || '#FFC0C0'}; color: ${p.color?.text || '#1e293b'}">
+                        <i data-lucide="pin" class="w-5 h-5 text-amber-500 fill-current mb-6"></i>
+                        <p class="text-base font-bold line-clamp-5 leading-relaxed">${p.text || 'โน้ตว่าง...'}</p>
+                    </div>
+                `).join('') || '<div class="col-span-full py-16 text-center text-slate-300 italic text-sm font-bold border-2 border-dashed border-slate-200 rounded-[3rem]">ยังไม่มีโน้ตปักหมุดไว้ครับคุณกาย</div>';
+            }
+            
+            updateNotifBell();
+            refreshIcons();
+        }
+
+        window.renderTasks = () => {
+            const grid = document.getElementById('task-grid');
+            if(!grid) return;
+            const tasks = window.APP_DATA.tasks;
+            const cat = document.getElementById('filter-cat').value;
+            const status = document.getElementById('filter-status').value;
+            const prio = document.getElementById('filter-prio').value;
+            const dateCreated = document.getElementById('filter-date-created').value;
+
+            let filtered = tasks.filter(t => {
+                if(t.status === 'completed' || t.status === 'closed') return false;
+                if(cat !== 'all' && t.category !== cat) return false;
+                if(status !== 'all' && t.status !== status) return false;
+                if(prio !== 'all' && t.priority !== prio) return false;
+                if(dateCreated && !t.createdAt?.startsWith(dateCreated)) return false;
+                return true;
+            });
+
+            filtered.sort((a,b) => new Date(a.deadline) - new Date(b.deadline));
+            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-24 text-center text-slate-300 font-bold border-2 border-dashed border-slate-200 rounded-[4rem]">ไม่พบงานที่คุณกายตามหาครับ</div>`;
+            refreshIcons();
+        };
+
+        window.clearFilters = () => {
+            document.getElementById('filter-cat').value = 'all';
+            document.getElementById('filter-status').value = 'all';
+            document.getElementById('filter-prio').value = 'all';
+            document.getElementById('filter-date-created').value = '';
+            window.renderTasks();
+        };
+
+        window.renderArchive = () => {
+            const grid = document.getElementById('archive-grid');
+            if(!grid) return;
+            const tasks = window.APP_DATA.tasks;
+            
+            const start = document.getElementById('archive-date-start').value;
+            const end = document.getElementById('archive-date-end').value;
+            const status = document.getElementById('archive-status').value;
+
+            let filtered = tasks.filter(t => t.status === 'completed' || t.status === 'closed');
+            if(start) filtered = filtered.filter(t => t.deadline && t.deadline >= start);
+            if(end) filtered = filtered.filter(t => t.deadline && t.deadline <= end);
+            if(status !== 'all') filtered = filtered.filter(t => t.status === status);
+
+            filtered.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            grid.innerHTML = filtered.map(t => createTaskCard(t)).join('') || `<div class="col-span-full py-24 text-center text-slate-300 font-bold border-2 border-dashed border-slate-200 rounded-[4rem]">ไม่พบรายการงานสำเร็จครับ</div>`;
+            refreshIcons();
+        };
+
+        function createTaskCard(t) {
+            const p = PRIORITIES[t.priority] || PRIORITIES.general;
+            const updateTxt = t.updatedAt ? new Date(t.updatedAt).toLocaleString('th-TH', { hour:'2-digit', minute:'2-digit', day:'numeric', month:'short' }) : 'N/A';
+            return `
+                <div onclick="window.openTaskModal('${t.id}')" class="postit-card glass p-10 rounded-[3.5rem] border border-slate-200 flex flex-col h-full shadow-2xl relative overflow-hidden">
+                    <div class="flex justify-between mb-8">
+                        <span class="text-[10px] font-bold px-4 py-2 rounded-2xl ${p.class} text-white shadow-lg uppercase tracking-tighter">${p.label}</span>
+                        <span class="text-[10px] font-bold px-4 py-2 bg-slate-100 text-slate-500 rounded-2xl uppercase tracking-tighter">${t.status}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 mb-4 line-clamp-1 text-2xl tracking-tighter uppercase">${t.title}</h4>
+                    <p class="text-sm text-slate-500 mb-10 flex-1 line-clamp-2 leading-relaxed font-medium">${t.description || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                    <div class="pt-8 border-t border-slate-50 flex justify-between items-center text-[11px] font-bold text-slate-400">
+                        <div class="flex flex-col gap-1.5">
+                            <span class="uppercase opacity-60">อัปเดต: ${updateTxt}</span>
+                            <span class="flex items-center gap-2 uppercase tracking-widest text-indigo-500"><i data-lucide="tag" class="w-4 h-4"></i> ${t.category}</span>
+                        </div>
+                        <span class="bg-indigo-50 text-indigo-600 px-5 py-2.5 rounded-[1.5rem] border border-indigo-100">${t.deadline ? new Date(t.deadline).toLocaleDateString('th-TH') : 'N/A'}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openTaskModal = (id = null) => {
+            window.STATE.currentEditId = id;
+            const modal = document.getElementById('task-modal');
+            document.getElementById('task-cat').innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('task-prio').innerHTML = Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
+
+            if(id) {
+                const t = window.APP_DATA.tasks.find(x => x.id === id);
+                document.getElementById('modal-title').innerText = "ข้อมูลละเอียดงานคุณกาย";
+                document.getElementById('task-title').value = t.title || '';
+                document.getElementById('task-desc').value = t.description || '';
+                document.getElementById('task-cat').value = t.category || 'บริหาร';
+                document.getElementById('task-prio').value = t.priority || 'general';
+                document.getElementById('task-deadline').value = t.deadline || '';
+                document.getElementById('task-status').value = t.status || 'pending';
+                document.getElementById('task-special-alert').value = t.specialAlert || '';
+                document.getElementById('task-notes').value = t.notes || '';
+                document.getElementById('task-link-1').value = t.links?.[0] || '';
+                document.getElementById('task-link-2').value = t.links?.[1] || '';
+                document.getElementById('task-link-3').value = t.links?.[2] || '';
+                
+                document.getElementById('btn-delete').classList.remove('hidden');
+                document.getElementById('log-section').classList.remove('hidden');
+                document.getElementById('log-list').innerHTML = (t.logs || []).map(l => `
+                    <div class="text-[11px] p-4 bg-slate-50 rounded-3xl flex justify-between border border-slate-100 shadow-sm mb-2">
+                        <span class="font-bold text-slate-600 uppercase tracking-tighter">${l.action}</span>
+                        <span class="text-slate-400 font-bold">${new Date(l.time).toLocaleString('th-TH')}</span>
+                    </div>
+                `).reverse().join('');
+            } else {
+                document.getElementById('modal-title').innerText = "สั่งงานใหม่คุณกาย";
+                document.querySelectorAll('#task-modal input, #task-modal textarea').forEach(el => el.value = '');
+                document.getElementById('task-status').value = 'pending';
+                document.getElementById('btn-delete').classList.add('hidden');
+                document.getElementById('log-section').classList.add('hidden');
+            }
+            modal.classList.remove('hidden');
+            refreshIcons();
+        };
+
+        window.closeTaskModal = () => document.getElementById('task-modal').classList.add('hidden');
+
+        window.saveTask = () => {
+            const titleVal = document.getElementById('task-title').value;
+            if(!titleVal) {
+                window.showToast("กรุณากรอกหัวข้อเรื่องด้วยครับคุณกาย", "error");
+                return;
+            }
+            const now = new Date().toISOString();
+            const data = {
+                id: window.STATE.currentEditId || Date.now().toString(),
+                title: titleVal,
+                description: document.getElementById('task-desc').value,
+                category: document.getElementById('task-cat').value,
+                priority: document.getElementById('task-prio').value,
+                deadline: document.getElementById('task-deadline').value,
+                status: document.getElementById('task-status').value,
+                specialAlert: document.getElementById('task-special-alert').value,
+                notes: document.getElementById('task-notes').value,
+                links: [document.getElementById('task-link-1').value, document.getElementById('task-link-2').value, document.getElementById('task-link-3').value],
+                updatedAt: now,
+                createdAt: window.STATE.currentEditId ? window.APP_DATA.tasks.find(x => x.id === window.STATE.currentEditId).createdAt : now,
+                logs: window.STATE.currentEditId ? window.APP_DATA.tasks.find(x => x.id === window.STATE.currentEditId).logs : []
+            };
+
+            data.logs.push({ action: `อัปเดตสเต็ป: ${data.status}`, time: now });
+            if(window.STATE.currentEditId) window.APP_DATA.tasks = window.APP_DATA.tasks.map(t => t.id === window.STATE.currentEditId ? data : t);
+            else window.APP_DATA.tasks.push(data);
+            
+            localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
+            window.closeTaskModal();
+            window.showToast("บันทึกข้อมูลส่วนงานเรียบร้อยแล้วครับ");
+            updateDashboard();
+            const isFinished = (data.status === 'completed' || data.status === 'closed');
+            window.switchView(isFinished ? 'archive' : 'tasks');
+        };
+
+        window.goToLink = (num) => { const url = document.getElementById(`task-link-${num}`).value; if(url) window.open(url, '_blank'); };
+
+        window.handleDeleteTask = () => {
+            window.showConfirm("ลบงานนี้ถาวร? ข้อมูลจะกู้คืนไม่ได้นะครับคุณกาย", () => {
+                window.APP_DATA.tasks = window.APP_DATA.tasks.filter(t => t.id !== window.STATE.currentEditId);
+                localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
+                window.closeTaskModal();
+                window.showToast("ลบงานเสร็จสมบูรณ์");
+                updateDashboard();
+                renderTasks();
+            });
+        };
+
+        window.renderPostIts = () => {
+            const container = document.getElementById('postit-grid');
+            if(!container) return;
+            const sorted = [...window.APP_DATA.postIts].sort((a,b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+            container.innerHTML = sorted.map(p => `
+                <div class="postit-card p-10 shadow-2xl relative flex flex-col ${p.pinned ? 'postit-pinned scale-105 z-10' : ''} h-80" style="background-color: ${p.color?.bg || '#FFC0C0'}; color: ${p.color?.text || '#1e293b'}">
+                    <div class="flex justify-between items-center mb-8">
+                        <button onclick="window.togglePinPostIt('${p.id}')" class="p-3 bg-white/30 rounded-2xl hover:bg-white/60 transition-all"><i data-lucide="pin" class="w-6 h-6 ${p.pinned ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}"></i></button>
+                        <button onclick="window.deletePostIt('${p.id}')" class="p-3 bg-white/30 rounded-2xl hover:bg-rose-500 hover:text-white transition-all"><i data-lucide="trash-2" class="w-6 h-6"></i></button>
+                    </div>
+                    <textarea onblur="window.savePostItText('${p.id}', this.value)" class="flex-1 w-full bg-transparent border-none outline-none font-bold text-xl resize-none custom-scrollbar leading-relaxed" placeholder="พิมพ์ข้อความ...">${p.text}</textarea>
+                </div>
+            `).join('') || '<p class="col-span-full py-24 text-center text-slate-300 font-bold italic border-2 border-dashed border-slate-200 rounded-[4rem]">ยังไม่มีแผ่นโน้ตครับคุณกาย</p>';
+            refreshIcons();
+        };
+
+        window.addPostIt = () => {
+            const color = POSTIT_COLORS[Math.floor(Math.random() * POSTIT_COLORS.length)];
+            window.APP_DATA.postIts.unshift({ id: Date.now().toString(), text: '', color: color, pinned: false });
+            localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts));
+            window.renderPostIts();
+        };
+
+        window.savePostItText = (id, val) => { const p = window.APP_DATA.postIts.find(x => x.id === id); if(p) { p.text = val; localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); } };
+        window.togglePinPostIt = (id) => { 
+            const p = window.APP_DATA.postIts.find(x => x.id === id); 
+            if(p) { 
+                if(!p.pinned && window.APP_DATA.postIts.filter(x => x.pinned).length >= 3) { 
+                    window.showToast("ปักหมุดบนแดชบอร์ดได้สูงสุด 3 อันครับคุณกาย", "error"); 
+                    return; 
+                }
+                p.pinned = !p.pinned; 
+                localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); 
+                renderPostIts(); 
+                if(!document.getElementById('view-dashboard').classList.contains('hidden')) updateDashboard();
+            } 
+        };
+        window.deletePostIt = (id) => { 
+            window.showConfirm("ต้องการลบแผ่นโน้ตด่วนใบนี้ใช่ไหมครับ?", () => { 
+                window.APP_DATA.postIts = window.APP_DATA.postIts.filter(x => x.id !== id); 
+                localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); 
+                renderPostIts(); 
+                window.showToast('ลบโน้ตสำเร็จ');
+            }); 
+        };
+
+        window.renderCalendar = () => {
+            const grid = document.getElementById('calendar-grid');
+            if(!grid) return;
+            const year = window.STATE.calendarDate.getFullYear();
+            const month = window.STATE.calendarDate.getMonth();
+            document.getElementById('calendar-title').innerText = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(window.STATE.calendarDate);
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-6 text-center text-[12px] font-bold text-slate-300 uppercase border-b border-r border-slate-100">${d}</div>`).join('');
+            for(let i=0; i<firstDay; i++) html += `<div class="bg-slate-50/30 h-44 border-b border-r border-slate-100"></div>`;
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayTasks = window.APP_DATA.tasks.filter(t => t.deadline?.startsWith(dateStr) && t.status !== 'closed' && t.status !== 'completed');
+                html += `
+                    <div onclick="if(${dayTasks.length > 0}){ window.switchView('tasks'); document.getElementById('filter-date-created').value='${dateStr}'; renderTasks(); }" 
+                         class="bg-white h-44 p-2 sm:p-4 border-b border-r border-slate-100 hover:bg-indigo-50/50 transition-all cursor-pointer group">
+                        <span class="text-sm font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">${d}</span>
+                        <div class="mt-2 space-y-1.5 overflow-hidden">
+                            ${dayTasks.map(t => {
+                                const p = PRIORITIES[t.priority] || PRIORITIES.general;
+                                return `<div title="${t.title}" class="text-[9px] font-bold ${p.class} px-2 py-1.5 rounded-xl truncate shadow-lg border border-white/20">${t.title}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            grid.innerHTML = html;
+        };
+
+        window.changeMonth = (val) => { window.STATE.calendarDate.setMonth(window.STATE.calendarDate.getMonth() + val); renderCalendar(); };
+
+        function initDiary() {
+            const years = [...new Set(Object.keys(window.APP_DATA.diaries).map(d => d.split('-')[0]))].sort().reverse();
+            document.getElementById('diary-filter-year').innerHTML = (years.length ? years : [new Date().getFullYear()]).map(y => `<option value="${y}">${y}</option>`).join('');
+            
+            if(!window.STATE.quill) {
+                window.STATE.quill = new Quill('#journal-editor', {
+                    theme: 'snow',
+                    placeholder: 'จดบันทึกประเด็นสำคัญประจำวันของคุณกายที่นี่... (สามารถลากวางหรืออัปโหลดรูปภาพ และแก้ไขจัดแต่งขนาดรูปได้อย่างมืออาชีพครับ)',
+                    modules: { 
+                        toolbar: {
+                            container: [
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'color': [] }, { 'background': [] }],
+                                ['link', 'image'],
+                                ['clean']
+                            ]
+                        }
+                    }
+                });
+
+                // Attach Image Resizing Event Listeners inside Quill Editor
+                const editorArea = document.querySelector('#journal-editor');
+                editorArea.addEventListener('click', (e) => {
+                    const target = e.target;
+                    if (target.tagName === 'IMG') {
+                        // Clear previous active image
+                        if (window.STATE.selectedImgElement && window.STATE.selectedImgElement !== target) {
+                            window.STATE.selectedImgElement.classList.remove('img-active');
+                        }
+                        
+                        window.STATE.selectedImgElement = target;
+                        target.classList.add('img-active');
+                        showImageController(target);
+                    } else {
+                        // Hide controller if click anywhere else inside editor
+                        hideImageController();
+                    }
+                });
+
+                // Track scroll inside the quill root editor area to update coordinates
+                window.STATE.quill.root.addEventListener('scroll', () => {
+                    if (window.STATE.selectedImgElement) {
+                        showImageController(window.STATE.selectedImgElement);
+                    }
+                });
+
+                // Hide image controller when user typing
+                window.STATE.quill.on('text-change', () => {
+                    hideImageController();
+                });
+            }
+            renderDiaryHistory();
+        }
+
+        // Dynamic alignment and scaling for images inside Quill
+        function showImageController(img) {
+            const controller = document.getElementById('image-controller-bar');
+            if (!controller) return;
+
+            // Compute exact absolute coordinates within relative container
+            const editor = document.querySelector('#journal-editor');
+            const editorRect = editor.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+
+            let top = (imgRect.bottom - editorRect.top) + editor.scrollTop + 20;
+            let left = (imgRect.left - editorRect.left) + (imgRect.width / 2) - 180;
+
+            // Constrain left/right boundary
+            if (left < 10) left = 10;
+            if (left + 360 > editorRect.width) {
+                left = Math.max(10, editorRect.width - 370);
+            }
+
+            controller.style.top = `${top}px`;
+            controller.style.left = `${left}px`;
+            controller.classList.remove('hidden');
+            controller.classList.add('flex');
+            if(window.lucide) window.lucide.createIcons();
+        }
+
+        function hideImageController() {
+            const controller = document.getElementById('image-controller-bar');
+            if (controller) {
+                controller.classList.add('hidden');
+                controller.classList.remove('flex');
+            }
+            if (window.STATE.selectedImgElement) {
+                window.STATE.selectedImgElement.classList.remove('img-active');
+                window.STATE.selectedImgElement = null;
+            }
+        }
+
+        window.adjustSelectedImageWidth = (perc) => {
+            if (window.STATE.selectedImgElement) {
+                window.STATE.selectedImgElement.style.width = `${perc}%`;
+                window.STATE.selectedImgElement.style.height = 'auto';
+                setTimeout(() => showImageController(window.STATE.selectedImgElement), 50);
+            }
+        };
+
+        window.scaleSelectedImage = (delta) => {
+            if (window.STATE.selectedImgElement) {
+                let currentWidth = parseInt(window.STATE.selectedImgElement.style.width || window.STATE.selectedImgElement.width || '100');
+                if (isNaN(currentWidth) || currentWidth < 10) currentWidth = 100;
+                const targetWidth = Math.max(10, Math.min(100, currentWidth + delta));
+                window.STATE.selectedImgElement.style.width = `${targetWidth}%`;
+                window.STATE.selectedImgElement.style.height = 'auto';
+                setTimeout(() => showImageController(window.STATE.selectedImgElement), 50);
+            }
+        };
+
+        window.alignSelectedImage = (alignment) => {
+            if (window.STATE.selectedImgElement) {
+                const img = window.STATE.selectedImgElement;
+                if (alignment === 'left') {
+                    img.style.display = 'block';
+                    img.style.marginLeft = '0';
+                    img.style.marginRight = 'auto';
+                } else if (alignment === 'center') {
+                    img.style.display = 'block';
+                    img.style.marginLeft = 'auto';
+                    img.style.marginRight = 'auto';
+                } else if (alignment === 'right') {
+                    img.style.display = 'block';
+                    img.style.marginLeft = 'auto';
+                    img.style.marginRight = '0';
+                }
+                setTimeout(() => showImageController(img), 50);
+            }
+        };
+
+        // Moves the image's container block up or down relative to sibling blocks (paragraphs/headers)
+        window.moveSelectedImage = (direction) => {
+            if (!window.STATE.selectedImgElement) return;
+            const img = window.STATE.selectedImgElement;
+            const qlEditor = document.querySelector('.ql-editor');
+            
+            // Find the top-most wrapper sibling block under ql-editor
+            let block = img;
+            while (block && block.parentNode !== qlEditor) {
+                block = block.parentNode;
+            }
+            if (!block) return;
+
+            if (direction === 'up') {
+                const prev = block.previousElementSibling;
+                if (prev) {
+                    qlEditor.insertBefore(block, prev);
+                    window.showToast("ขยับตำแหน่งภาพขึ้นแล้วครับ", "success");
+                } else {
+                    window.showToast("ภาพอยู่จุดบนสุดของสมุดแล้วครับ", "error");
+                }
+            } else if (direction === 'down') {
+                const next = block.nextElementSibling;
+                if (next) {
+                    // inserts 'next' before 'block', pushing 'block' downward
+                    qlEditor.insertBefore(next, block);
+                    window.showToast("ขยับตำแหน่งภาพลงแล้วครับ", "success");
+                } else {
+                    window.showToast("ภาพอยู่จุดล่างสุดของสมุดแล้วครับ", "error");
+                }
+            }
+
+            // Keep selection state active & recalculate controller position
+            setTimeout(() => {
+                if (window.STATE.selectedImgElement) {
+                    showImageController(window.STATE.selectedImgElement);
+                }
+            }, 80);
+        };
+
+        window.deleteSelectedImage = () => {
+            if (window.STATE.selectedImgElement) {
+                window.STATE.selectedImgElement.remove();
+                hideImageController();
+                window.showToast("ลบรูปภาพสำเร็จ");
+            }
+        };
+
+        window.toggleEmojiPicker = (state = null) => {
+            const picker = document.getElementById('diary-emoji-picker');
+            if (!picker) return;
+            if (state === null) {
+                picker.classList.toggle('hidden');
+            } else if (state) {
+                picker.classList.remove('hidden');
+            } else {
+                picker.classList.add('hidden');
+            }
+        };
+
+        window.insertEmoji = (emoji) => {
+            if (window.STATE.quill) {
+                const range = window.STATE.quill.getSelection(true);
+                window.STATE.quill.insertText(range.index, emoji);
+                window.STATE.quill.setSelection(range.index + emoji.length);
+                window.toggleEmojiPicker(false);
+            }
+        };
+
+        function renderDiaryHistory() {
+            const year = document.getElementById('diary-filter-year').value;
+            const month = document.getElementById('diary-filter-month').value;
+            const dates = Object.keys(window.APP_DATA.diaries).filter(d => d.startsWith(year) && (month === 'all' || d.split('-')[1] === month)).sort().reverse();
+            document.getElementById('diary-history-list').innerHTML = dates.map(d => `
+                <button onclick="window.previewDiary('${d}')" class="w-full p-6 rounded-[2rem] text-left text-xs font-bold transition-all ${d === window.STATE.selectedDiaryDate ? 'bg-indigo-600 text-white shadow-xl' : 'bg-white hover:bg-slate-50'} border border-slate-100">
+                    ${new Date(d).toLocaleDateString('th-TH')}
+                </button>
+            `).join('') || '<p class="text-xs text-slate-300 text-center py-8 italic font-medium tracking-widest">ไม่พบบันทึก</p>';
+        }
+
+        window.previewDiary = (ds) => {
+            window.STATE.selectedDiaryDate = ds;
+            const data = window.APP_DATA.diaries[ds] || { content: '', logs: [] };
+            document.getElementById('diary-view-date').innerText = new Date(ds).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('diary-view-content').innerHTML = data.content || '<span class="text-slate-300 italic font-bold">ยังไม่มีเนื้อหาบันทึกในวันนี้ครับคุณกาย</span>';
+            
+            // แสดงผลรายการประวัติการบันทึกแก้ไข (Edit History Logs) ใต้ชื่อวันที่บันทึก
+            const logsContainer = document.getElementById('diary-view-logs');
+            if (logsContainer) {
+                const logs = data.logs || [];
+                if (logs.length > 0) {
+                    logsContainer.innerHTML = `
+                        <div class="w-full text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 mt-1 flex items-center gap-1.5">
+                            <i data-lucide="history" class="w-3.5 h-3.5 text-indigo-500"></i> ประวัติการแก้ไขล่าสุด (${logs.length} ครั้ง)
+                        </div>
+                        <div class="flex flex-wrap gap-2 max-h-24 overflow-y-auto custom-scrollbar pr-1 w-full">
+                            ${logs.map((logTime, idx) => {
+                                const localTime = new Date(logTime).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: 'numeric', month: 'short', year: 'numeric' });
+                                return `<span class="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 rounded-xl text-[10px] font-bold border border-indigo-100/50 transition-colors shadow-sm">
+                                    ครั้งที่ ${logs.length - idx}: ${localTime}
+                                </span>`;
+                            }).join('')}
+                        </div>
+                    `;
+                } else {
+                    logsContainer.innerHTML = '<span class="text-[10px] font-bold text-slate-300 italic">ยังไม่มีประวัติการบันทึกแก้ไขก่อนหน้านี้</span>';
+                }
+            }
+
+            document.getElementById('diary-edit-btn').classList.remove('hidden');
+            renderDiaryHistory();
+            refreshIcons();
+        };
+
+        window.toggleDiaryEdit = (show) => {
+            if(show) {
+                const data = window.APP_DATA.diaries[window.STATE.selectedDiaryDate] || { content: '' };
+                window.STATE.quill.root.innerHTML = data.content;
+                document.getElementById('diary-edit-date-title').innerText = new Date(window.STATE.selectedDiaryDate).toLocaleDateString('th-TH');
+                document.getElementById('diary-editor-overlay').classList.remove('hidden');
+                hideImageController();
+            } else {
+                document.getElementById('diary-editor-overlay').classList.add('hidden');
+                hideImageController();
+            }
+        };
+
+        window.saveDiary = () => {
+            const ds = window.STATE.selectedDiaryDate;
+            if(!window.APP_DATA.diaries[ds]) window.APP_DATA.diaries[ds] = { content: '', logs: [] };
+            
+            // Cleanup any active classes before saving
+            if (window.STATE.selectedImgElement) {
+                window.STATE.selectedImgElement.classList.remove('img-active');
+            }
+            hideImageController();
+
+            window.APP_DATA.diaries[ds].content = window.STATE.quill.root.innerHTML;
+            window.APP_DATA.diaries[ds].logs = window.APP_DATA.diaries[ds].logs || [];
+            window.APP_DATA.diaries[ds].logs.unshift(new Date().toISOString());
+            localStorage.setItem('guy_v25_diaries', JSON.stringify(window.APP_DATA.diaries));
+            
+            window.toggleDiaryEdit(false);
+            window.previewDiary(ds);
+            window.showToast("บันทึกสมุดเรียบร้อยครับคุณกาย");
+        };
+
+        function initSettings() {
+            document.getElementById('set-morning').value = window.APP_DATA.settings.morningTime;
+            document.getElementById('set-afternoon').value = window.APP_DATA.settings.afternoonTime;
+            
+            ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].forEach(d => {
+                const btn = document.getElementById(`day-${d}`);
+                if(btn) {
+                    if(window.APP_DATA.settings.notifyDays.includes(d)) {
+                        btn.className = "px-4 py-2.5 rounded-xl border text-xs font-bold transition-all bg-indigo-600 text-white border-indigo-600 shadow-lg";
+                    } else {
+                        btn.className = "px-4 py-2.5 rounded-xl border text-xs font-bold transition-all bg-white text-slate-500 border-slate-200";
+                    }
+                }
+            });
+        }
+
+        window.toggleDay = (day) => {
+            if(window.APP_DATA.settings.notifyDays.includes(day)) {
+                window.APP_DATA.settings.notifyDays = window.APP_DATA.settings.notifyDays.filter(d => d !== day);
+            } else {
+                window.APP_DATA.settings.notifyDays.push(day);
+            }
+            localStorage.setItem('guy_v25_settings', JSON.stringify(window.APP_DATA.settings));
+            initSettings();
+            window.showToast("อัปเดตวันแจ้งเตือนสำเร็จ");
+        };
+
+        window.saveSettings = () => {
+            window.APP_DATA.settings.morningTime = document.getElementById('set-morning').value;
+            window.APP_DATA.settings.afternoonTime = document.getElementById('set-afternoon').value;
+            localStorage.setItem('guy_v25_settings', JSON.stringify(window.APP_DATA.settings));
+            window.showToast("บันทึกการตั้งค่าเวลาสำเร็จ");
+        };
+
+        window.updateNotifBell = () => {
+            const now = new Date();
+            const alerts = window.APP_DATA.tasks.filter(t => {
+                if(t.status === 'completed' || t.status === 'closed') return false;
+                const isUrgent = t.priority === 'urgent';
+                const isFocus = t.priority === 'focus';
+                const isNear = t.deadline && (new Date(t.deadline) - now) < 43200000 && (new Date(t.deadline) - now) > 0;
+                return isUrgent || isFocus || isNear;
+            });
+            const dot = document.getElementById('bell-dot');
+            const bell = document.getElementById('notif-bell');
+            if(dot) dot.classList.toggle('hidden', alerts.length === 0);
+            if(bell) bell.classList.toggle('bell-ring', alerts.length > 0);
+
+            const bellList = document.getElementById('bell-list');
+            if(bellList) {
+                bellList.innerHTML = alerts.map(t => `
+                    <div onclick="window.openTaskModal('${t.id}')" class="p-5 bg-slate-50 rounded-[2.5rem] cursor-pointer hover:bg-white border border-slate-100 transition-all shadow-sm mb-2">
+                        <p class="text-sm font-bold text-slate-800 line-clamp-1 uppercase tracking-tighter">${t.title}</p>
+                        <span class="text-[9px] font-bold uppercase tracking-widest text-rose-500">${t.priority.toUpperCase()} Alert</span>
+                    </div>
+                `).join('') || '<p class="text-xs text-slate-400 text-center py-6 font-bold uppercase italic opacity-40">ไม่มีรายการเร่งด่วนครับ</p>';
+            }
+        };
+
+        function initApp() {
+            const filterCat = document.getElementById('filter-cat');
+            if(filterCat) filterCat.innerHTML = '<option value="all">ทุกหมวดหมู่</option>' + CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            const filterPrio = document.getElementById('filter-prio');
+            if(filterPrio) filterPrio.innerHTML = '<option value="all">ทุกความสำคัญ</option>' + Object.keys(PRIORITIES).map(k => `<option value="${k}">${PRIORITIES[k].label}</option>`).join('');
+            
+            if(!window.APP_DATA.user) {
+                document.getElementById('login-overlay').classList.remove('hidden');
+            } else {
+                window.switchView('dashboard');
+            }
+            refreshIcons();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
