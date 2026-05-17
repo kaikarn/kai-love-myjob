@@ -126,7 +126,6 @@
             document.getElementById('confirm-desc').innerText = msg;
             const yesBtn = document.getElementById('confirm-yes-btn');
             
-            // Re-bind click event cleanly
             const newYesBtn = yesBtn.cloneNode(true);
             yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
             
@@ -142,16 +141,29 @@
         };
 
         window.handleLogin = () => {
-            window.APP_DATA.user = { name: 'คุณกาย', avatar: 'K' };
-            localStorage.setItem('guy_v25_user', JSON.stringify(window.APP_DATA.user));
-            document.getElementById('login-overlay').classList.add('hidden');
-            window.switchView('dashboard');
-            window.showToast('สวัสดีครับคุณกาย ยินดีต้อนรับกลับเข้าสู่ระบบครับ');
+            if (window.triggerGoogleAuthLogin) {
+                window.triggerGoogleAuthLogin();
+            } else {
+                // Fallback ในกรณีที่ยังเชื่อมคลาวด์ไม่สมบูรณ์
+                window.APP_DATA.user = { name: 'คุณกาย', avatar: 'K' };
+                localStorage.setItem('guy_v25_user', JSON.stringify(window.APP_DATA.user));
+                document.getElementById('login-overlay').classList.add('hidden');
+                window.switchView('dashboard');
+                window.showToast('เข้าระบบเสร็จสิ้น (ใช้งานแบบออฟไลน์ชั่วคราว)');
+            }
         };
 
         window.handleLogout = () => {
-            window.showConfirm("ต้องการออกจากระบบไหมครับคุณกาย?", () => {
+            window.showConfirm("ต้องการออกจากระบบไหมครับคุณกาย?", async () => {
                 localStorage.removeItem('guy_v25_user');
+                localStorage.removeItem('guy_v25_tasks');
+                localStorage.removeItem('guy_v25_postits');
+                localStorage.removeItem('guy_v25_diaries');
+                localStorage.removeItem('guy_v25_settings');
+                
+                if (window.triggerFirebaseSignOut) {
+                    await window.triggerFirebaseSignOut();
+                }
                 location.reload();
             });
         };
@@ -282,6 +294,12 @@
                 <h2 id="view-title" class="text-lg font-bold text-slate-800">แดชบอร์ด</h2>
             </div>
             <div class="flex items-center gap-4">
+                <!-- Cloud Sync Status Badge -->
+                <div id="cloud-sync-status" class="hidden sm:flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-2xl text-xs font-bold border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>ซิงค์กับคลาวด์แล้ว</span>
+                </div>
+                
                 <div class="relative group">
                     <button class="p-3 hover:bg-slate-100 rounded-2xl relative">
                         <i data-lucide="bell" id="notif-bell" class="w-6 h-6 text-slate-400 group-hover:text-indigo-600"></i>
@@ -292,7 +310,7 @@
                         <div id="bell-list" class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar"></div>
                     </div>
                 </div>
-                <div class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">K</div>
+                <div id="header-avatar" class="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">K</div>
             </div>
         </header>
 
@@ -866,6 +884,8 @@
             else window.APP_DATA.tasks.push(data);
             
             localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
+            if (window.fbSaveTask) window.fbSaveTask(data); // Sync up to Cloud
+            
             window.closeTaskModal();
             window.showToast("บันทึกข้อมูลส่วนงานเรียบร้อยแล้วครับ");
             updateDashboard();
@@ -877,8 +897,11 @@
 
         window.handleDeleteTask = () => {
             window.showConfirm("ลบงานนี้ถาวร? ข้อมูลจะกู้คืนไม่ได้นะครับคุณกาย", () => {
-                window.APP_DATA.tasks = window.APP_DATA.tasks.filter(t => t.id !== window.STATE.currentEditId);
+                const targetId = window.STATE.currentEditId;
+                window.APP_DATA.tasks = window.APP_DATA.tasks.filter(t => t.id !== targetId);
                 localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
+                if (window.fbDeleteTask) window.fbDeleteTask(targetId); // Delete from Cloud
+                
                 window.closeTaskModal();
                 window.showToast("ลบงานเสร็จสมบูรณ์");
                 updateDashboard();
@@ -904,12 +927,22 @@
 
         window.addPostIt = () => {
             const color = POSTIT_COLORS[Math.floor(Math.random() * POSTIT_COLORS.length)];
-            window.APP_DATA.postIts.unshift({ id: Date.now().toString(), text: '', color: color, pinned: false });
+            const newPost = { id: Date.now().toString(), text: '', color: color, pinned: false };
+            window.APP_DATA.postIts.unshift(newPost);
             localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts));
+            if (window.fbSavePostIt) window.fbSavePostIt(newPost); // Sync new post
             window.renderPostIts();
         };
 
-        window.savePostItText = (id, val) => { const p = window.APP_DATA.postIts.find(x => x.id === id); if(p) { p.text = val; localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); } };
+        window.savePostItText = (id, val) => { 
+            const p = window.APP_DATA.postIts.find(x => x.id === id); 
+            if(p) { 
+                p.text = val; 
+                localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); 
+                if (window.fbSavePostIt) window.fbSavePostIt(p); // Sync update post
+            } 
+        };
+
         window.togglePinPostIt = (id) => { 
             const p = window.APP_DATA.postIts.find(x => x.id === id); 
             if(p) { 
@@ -919,14 +952,17 @@
                 }
                 p.pinned = !p.pinned; 
                 localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); 
+                if (window.fbSavePostIt) window.fbSavePostIt(p); // Sync pin state
                 renderPostIts(); 
                 if(!document.getElementById('view-dashboard').classList.contains('hidden')) updateDashboard();
             } 
         };
+
         window.deletePostIt = (id) => { 
             window.showConfirm("ต้องการลบแผ่นโน้ตด่วนใบนี้ใช่ไหมครับ?", () => { 
                 window.APP_DATA.postIts = window.APP_DATA.postIts.filter(x => x.id !== id); 
                 localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts)); 
+                if (window.fbDeletePostIt) window.fbDeletePostIt(id); // Sync delete post
                 renderPostIts(); 
                 window.showToast('ลบโน้ตสำเร็จ');
             }); 
@@ -965,6 +1001,42 @@
 
         window.changeMonth = (val) => { window.STATE.calendarDate.setMonth(window.STATE.calendarDate.getMonth() + val); renderCalendar(); };
 
+        window.renderCalendar = () => {
+            const grid = document.getElementById('calendar-grid');
+            if(!grid) return;
+            const year = window.STATE.calendarDate.getFullYear();
+            const month = window.STATE.calendarDate.getMonth();
+            document.getElementById('calendar-title').innerText = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(window.STATE.calendarDate);
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(d => `<div class="bg-white p-3 sm:p-6 text-center text-[11px] sm:text-[12px] font-bold text-slate-300 uppercase border-b border-r border-slate-100">${d}</div>`).join('');
+            for(let i=0; i<firstDay; i++) html += `<div class="bg-slate-50/30 h-20 sm:h-44 border-b border-r border-slate-100"></div>`;
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayTasks = window.APP_DATA.tasks.filter(t => t.deadline?.startsWith(dateStr) && t.status !== 'closed' && t.status !== 'completed');
+                html += `
+                    <div onclick="if(${dayTasks.length > 0}){ window.switchView('tasks'); document.getElementById('filter-date-created').value='${dateStr}'; renderTasks(); }" 
+                         class="bg-white h-20 sm:h-44 p-1 sm:p-4 border-b border-r border-slate-100 hover:bg-indigo-50/50 transition-all cursor-pointer group">
+                        <span class="text-xs sm:text-sm font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">${d}</span>
+                        <div class="mt-1 sm:mt-2 flex flex-wrap gap-1 sm:block overflow-hidden justify-center">
+                            ${dayTasks.map(t => {
+                                const p = PRIORITIES[t.priority] || PRIORITIES.general;
+                                return `
+                                    <!-- Desktop Task Bar -->
+                                    <div title="${t.title}" class="hidden sm:block text-[9px] font-bold ${p.class} px-2 py-1.5 rounded-xl truncate shadow-lg border border-white/20">${t.title}</div>
+                                    <!-- Mobile Task Dot (Shown only on small screens) -->
+                                    <span title="${t.title}" class="block sm:hidden w-2.5 h-2.5 rounded-full shadow-sm" style="background-color: ${p.color};"></span>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            grid.innerHTML = html;
+        };
+
         function initDiary() {
             const years = [...new Set(Object.keys(window.APP_DATA.diaries).map(d => d.split('-')[0]))].sort().reverse();
             document.getElementById('diary-filter-year').innerHTML = (years.length ? years : [new Date().getFullYear()]).map(y => `<option value="${y}">${y}</option>`).join('');
@@ -985,12 +1057,10 @@
                     }
                 });
 
-                // Attach Image Resizing Event Listeners inside Quill Editor
                 const editorArea = document.querySelector('#journal-editor');
                 editorArea.addEventListener('click', (e) => {
                     const target = e.target;
                     if (target.tagName === 'IMG') {
-                        // Clear previous active image
                         if (window.STATE.selectedImgElement && window.STATE.selectedImgElement !== target) {
                             window.STATE.selectedImgElement.classList.remove('img-active');
                         }
@@ -999,19 +1069,16 @@
                         target.classList.add('img-active');
                         showImageController(target);
                     } else {
-                        // Hide controller if click anywhere else inside editor
                         hideImageController();
                     }
                 });
 
-                // Track scroll inside the quill root editor area to update coordinates
                 window.STATE.quill.root.addEventListener('scroll', () => {
                     if (window.STATE.selectedImgElement) {
                         showImageController(window.STATE.selectedImgElement);
                     }
                 });
 
-                // Hide image controller when user typing
                 window.STATE.quill.on('text-change', () => {
                     hideImageController();
                 });
@@ -1019,12 +1086,10 @@
             renderDiaryHistory();
         }
 
-        // Dynamic alignment and scaling for images inside Quill
         function showImageController(img) {
             const controller = document.getElementById('image-controller-bar');
             if (!controller) return;
 
-            // Compute exact absolute coordinates within relative container
             const editor = document.querySelector('#journal-editor');
             const editorRect = editor.getBoundingClientRect();
             const imgRect = img.getBoundingClientRect();
@@ -1032,7 +1097,6 @@
             let top = (imgRect.bottom - editorRect.top) + editor.scrollTop + 20;
             let left = (imgRect.left - editorRect.left) + (imgRect.width / 2) - 180;
 
-            // Constrain left/right boundary
             if (left < 10) left = 10;
             if (left + 360 > editorRect.width) {
                 left = Math.max(10, editorRect.width - 370);
@@ -1096,13 +1160,11 @@
             }
         };
 
-        // Moves the image's container block up or down relative to sibling blocks (paragraphs/headers)
         window.moveSelectedImage = (direction) => {
             if (!window.STATE.selectedImgElement) return;
             const img = window.STATE.selectedImgElement;
             const qlEditor = document.querySelector('.ql-editor');
             
-            // Find the top-most wrapper sibling block under ql-editor
             let block = img;
             while (block && block.parentNode !== qlEditor) {
                 block = block.parentNode;
@@ -1120,7 +1182,6 @@
             } else if (direction === 'down') {
                 const next = block.nextElementSibling;
                 if (next) {
-                    // inserts 'next' before 'block', pushing 'block' downward
                     qlEditor.insertBefore(next, block);
                     window.showToast("ขยับตำแหน่งภาพลงแล้วครับ", "success");
                 } else {
@@ -1128,7 +1189,6 @@
                 }
             }
 
-            // Keep selection state active & recalculate controller position
             setTimeout(() => {
                 if (window.STATE.selectedImgElement) {
                     showImageController(window.STATE.selectedImgElement);
@@ -1182,7 +1242,6 @@
             document.getElementById('diary-view-date').innerText = new Date(ds).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
             document.getElementById('diary-view-content').innerHTML = data.content || '<span class="text-slate-300 italic font-bold">ยังไม่มีเนื้อหาบันทึกในวันนี้ครับคุณกาย</span>';
             
-            // แสดงผลรายการประวัติการบันทึกแก้ไข (Edit History Logs) ใต้ชื่อวันที่บันทึก
             const logsContainer = document.getElementById('diary-view-logs');
             if (logsContainer) {
                 const logs = data.logs || [];
@@ -1227,7 +1286,6 @@
             const ds = window.STATE.selectedDiaryDate;
             if(!window.APP_DATA.diaries[ds]) window.APP_DATA.diaries[ds] = { content: '', logs: [] };
             
-            // Cleanup any active classes before saving
             if (window.STATE.selectedImgElement) {
                 window.STATE.selectedImgElement.classList.remove('img-active');
             }
@@ -1237,6 +1295,7 @@
             window.APP_DATA.diaries[ds].logs = window.APP_DATA.diaries[ds].logs || [];
             window.APP_DATA.diaries[ds].logs.unshift(new Date().toISOString());
             localStorage.setItem('guy_v25_diaries', JSON.stringify(window.APP_DATA.diaries));
+            if (window.fbSaveDiary) window.fbSaveDiary(ds, window.APP_DATA.diaries[ds]); // Sync Diary on Cloud
             
             window.toggleDiaryEdit(false);
             window.previewDiary(ds);
@@ -1266,6 +1325,7 @@
                 window.APP_DATA.settings.notifyDays.push(day);
             }
             localStorage.setItem('guy_v25_settings', JSON.stringify(window.APP_DATA.settings));
+            if (window.fbSaveSettings) window.fbSaveSettings(window.APP_DATA.settings); // Sync Settings on Cloud
             initSettings();
             window.showToast("อัปเดตวันแจ้งเตือนสำเร็จ");
         };
@@ -1274,6 +1334,7 @@
             window.APP_DATA.settings.morningTime = document.getElementById('set-morning').value;
             window.APP_DATA.settings.afternoonTime = document.getElementById('set-afternoon').value;
             localStorage.setItem('guy_v25_settings', JSON.stringify(window.APP_DATA.settings));
+            if (window.fbSaveSettings) window.fbSaveSettings(window.APP_DATA.settings); // Sync Settings on Cloud
             window.showToast("บันทึกการตั้งค่าเวลาสำเร็จ");
         };
 
@@ -1317,6 +1378,252 @@
         }
 
         window.onload = initApp;
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuration setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'guy-elite-v25';
+        let firebaseConfig = {};
+        
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+                apiKey: "", 
+                authDomain: "",
+                projectId: "",
+                storageBucket: "",
+                messagingSenderId: "",
+                appId: ""
+            };
+        } catch(e) {
+            console.error("Firebase Config error:", e);
+        }
+
+        let app, db, auth;
+        let isFirebaseActive = false;
+
+        if (firebaseConfig.apiKey) {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                isFirebaseActive = true;
+                console.log("Firebase Active: Connected to secure backend environment.");
+            } catch (err) {
+                console.error("Firebase init failed:", err);
+            }
+        }
+
+        // Auth Flow Triggers on Global Window Context
+        window.triggerGoogleAuthLogin = async () => {
+            if (!isFirebaseActive) {
+                window.showToast("โปรแกรมทำงานแบบ Local (ไม่มี Firebase Config)", "error");
+                return;
+            }
+            try {
+                const provider = new GoogleAuthProvider();
+                await signInWithPopup(auth, provider);
+            } catch(e) {
+                console.error("Google Popup Auth failed:", e);
+                window.showToast("เข้าสู่ระบบ Google ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "error");
+            }
+        };
+
+        window.triggerFirebaseSignOut = async () => {
+            if (!isFirebaseActive) return;
+            try {
+                await signOut(auth);
+            } catch(e) {
+                console.error("SignOut failed", e);
+            }
+        };
+
+        // Realtime Firestore Handlers for private data storage flow
+        window.fbSaveTask = async (taskData) => {
+            if (!isFirebaseActive || !auth.currentUser) return;
+            try {
+                const taskRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'tasks', taskData.id);
+                await setDoc(taskRef, taskData);
+            } catch (e) { console.error("Cloud task sync failed", e); }
+        };
+
+        window.fbDeleteTask = async (taskId) => {
+            if (!isFirebaseActive || !auth.currentUser) return;
+            try {
+                const taskRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'tasks', taskId);
+                await deleteDoc(taskRef);
+            } catch (e) { console.error("Cloud task delete failed", e); }
+        };
+
+        window.fbSavePostIt = async (postItData) => {
+            if (!isFirebaseActive || !auth.currentUser) return;
+            try {
+                const postItRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'postits', postItData.id);
+                await setDoc(postItRef, postItData);
+            } catch (e) { console.error("Cloud postit sync failed", e); }
+        };
+
+        window.fbDeletePostIt = async (postItId) => {
+            if (!isFirebaseActive || !auth.currentUser) return;
+            try {
+                const postItRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'postits', postItId);
+                await deleteDoc(postItRef);
+            } catch (e) { console.error("Cloud postit delete failed", e); }
+        };
+
+        window.fbSaveDiary = async (dateStr, diaryData) => {
+            if (!isFirebaseActive || !auth.currentUser) return;
+            try {
+                const diaryRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'diaries', dateStr);
+                await setDoc(diaryRef, diaryData);
+            } catch (e) { console.error("Cloud diary sync failed", e); }
+        };
+
+        window.fbSaveSettings = async (settingsData) => {
+            if (!isFirebaseActive || !auth.currentUser) return;
+            try {
+                const settingsRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'settings', 'user_settings');
+                await setDoc(settingsRef, settingsData);
+            } catch (e) { console.error("Cloud settings sync failed", e); }
+        };
+
+        let unsubscribes = [];
+        window.startCloudSyncService = (userId) => {
+            unsubscribes.forEach(unsub => unsub());
+            unsubscribes = [];
+
+            if (!isFirebaseActive) return;
+
+            // 1. Live Sync Tasks
+            const tasksCol = collection(db, 'artifacts', appId, 'users', userId, 'tasks');
+            const unsubTasks = onSnapshot(tasksCol, (snapshot) => {
+                const fbTasks = [];
+                snapshot.forEach(doc => fbTasks.push(doc.data()));
+                if (fbTasks.length > 0) {
+                    window.APP_DATA.tasks = fbTasks;
+                    localStorage.setItem('guy_v25_tasks', JSON.stringify(window.APP_DATA.tasks));
+                    if (typeof updateDashboard === 'function') updateDashboard();
+                    if (typeof renderTasks === 'function') renderTasks();
+                    if (typeof renderArchive === 'function') renderArchive();
+                    if (typeof renderCalendar === 'function') renderCalendar();
+                } else {
+                    // Seed initial data if cloud is empty
+                    const localTasks = JSON.parse(localStorage.getItem('guy_v25_tasks') || '[]');
+                    localTasks.forEach(task => window.fbSaveTask(task));
+                }
+            }, (err) => console.error("Tasks cloud listen error:", err));
+            unsubscribes.push(unsubTasks);
+
+            // 2. Live Sync PostIts
+            const postItsCol = collection(db, 'artifacts', appId, 'users', userId, 'postits');
+            const unsubPostIts = onSnapshot(postItsCol, (snapshot) => {
+                const fbPostIts = [];
+                snapshot.forEach(doc => fbPostIts.push(doc.data()));
+                if (fbPostIts.length > 0) {
+                    window.APP_DATA.postIts = fbPostIts;
+                    localStorage.setItem('guy_v25_postits', JSON.stringify(window.APP_DATA.postIts));
+                    if (typeof renderPostIts === 'function') renderPostIts();
+                    if (typeof updateDashboard === 'function') updateDashboard();
+                } else {
+                    const localPostIts = JSON.parse(localStorage.getItem('guy_v25_postits') || '[]');
+                    localPostIts.forEach(p => window.fbSavePostIt(p));
+                }
+            }, (err) => console.error("Postits cloud listen error:", err));
+            unsubscribes.push(unsubPostIts);
+
+            // 3. Live Sync Diaries
+            const diariesCol = collection(db, 'artifacts', appId, 'users', userId, 'diaries');
+            const unsubDiaries = onSnapshot(diariesCol, (snapshot) => {
+                const fbDiaries = {};
+                let hasData = false;
+                snapshot.forEach(doc => {
+                    fbDiaries[doc.id] = doc.data();
+                    hasData = true;
+                });
+                if (hasData) {
+                    window.APP_DATA.diaries = fbDiaries;
+                    localStorage.setItem('guy_v25_diaries', JSON.stringify(window.APP_DATA.diaries));
+                    if (typeof renderDiaryHistory === 'function') renderDiaryHistory();
+                    if (typeof previewDiary === 'function' && window.STATE.selectedDiaryDate) {
+                        previewDiary(window.STATE.selectedDiaryDate);
+                    }
+                } else {
+                    const localDiaries = JSON.parse(localStorage.getItem('guy_v25_diaries') || '{}');
+                    for (const dateKey in localDiaries) {
+                        window.fbSaveDiary(dateKey, localDiaries[dateKey]);
+                    }
+                }
+            }, (err) => console.error("Diaries cloud listen error:", err));
+            unsubscribes.push(unsubDiaries);
+
+            // 4. Live Sync Settings
+            const settingsDocRef = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'user_settings');
+            const unsubSettings = onSnapshot(settingsDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    window.APP_DATA.settings = docSnap.data();
+                    localStorage.setItem('guy_v25_settings', JSON.stringify(window.APP_DATA.settings));
+                    if (typeof initSettings === 'function') initSettings();
+                } else {
+                    const localSettings = JSON.parse(localStorage.getItem('guy_v25_settings') || 'null');
+                    if (localSettings) {
+                        window.fbSaveSettings(localSettings);
+                    }
+                }
+            }, (err) => console.error("Settings cloud listen error:", err));
+            unsubscribes.push(unsubSettings);
+        };
+
+        // Monitor Auth State Changes for Seamless Login state
+        if (isFirebaseActive) {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    window.APP_DATA.user = {
+                        name: user.displayName || 'คุณกาย',
+                        avatar: user.photoURL || (user.displayName ? user.displayName.charAt(0) : 'K'),
+                        uid: user.uid
+                    };
+                    localStorage.setItem('guy_v25_user', JSON.stringify(window.APP_DATA.user));
+
+                    // Sync avatar to layouts
+                    const avatarBox = document.getElementById('header-avatar');
+                    if (avatarBox) {
+                        if (user.photoURL) {
+                            avatarBox.innerHTML = `<img src="${user.photoURL}" class="w-full h-full rounded-xl object-cover" />`;
+                        } else {
+                            avatarBox.innerText = window.APP_DATA.user.avatar;
+                        }
+                    }
+
+                    // Display Synced Badge
+                    const syncBadge = document.getElementById('cloud-sync-status');
+                    if (syncBadge) syncBadge.classList.remove('hidden');
+
+                    // Hide overlay & redirect to dashboard
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    
+                    // Activate Firebase syncer engine
+                    window.startCloudSyncService(user.uid);
+                    window.switchView('dashboard');
+                    window.showToast("ระบบคลาวด์เชื่อมต่อสมบูรณ์ ยินดีต้อนรับครับคุณกาย");
+                } else {
+                    // Try Custom Token Login first if provided
+                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (token) {
+                        try {
+                            await signInWithCustomToken(auth, token);
+                        } catch (err) {
+                            console.error("Custom token auth failed:", err);
+                            document.getElementById('login-overlay').classList.remove('hidden');
+                        }
+                    } else {
+                        document.getElementById('login-overlay').classList.remove('hidden');
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
